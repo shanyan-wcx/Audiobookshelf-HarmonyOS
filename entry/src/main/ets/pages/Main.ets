@@ -1,5 +1,5 @@
 import window from '@ohos.window';
-import { router, promptAction } from '@kit.ArkUI';
+import { router, promptAction, display } from '@kit.ArkUI';
 import library from './tabs/Library'
 import { getLogout, getLibraries, getLibrarieItems } from '../api/Api'
 import { Library, LibraryItem } from '../api/Interface'
@@ -24,6 +24,10 @@ export default struct main {
   @State selectedLibrary: string = '';
   @State selectedLibraryId: string = '';
   @State shadowRadius: number = 0;
+  @State isPlaying: boolean = true
+  @State startPlaying: boolean = false
+  @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
+  displayHeight: number = 0
   private controller: TabsController = new TabsController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
@@ -31,6 +35,11 @@ export default struct main {
   changePage() {
     if (this.PageIndexTransfer === 3) {
       this.pageIndex = 3
+    }
+    if (this.startPlayingTransfer === true) {
+      this.startPlaying = true
+    } else {
+      this.startPlaying = false
     }
   }
 
@@ -173,6 +182,7 @@ export default struct main {
 
   async aboutToAppear() {
     this.getStatusBarHeight()
+    this.displayHeight = px2vp(display.getDefaultDisplaySync().height)
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
     libraries.forEach(async (element) => {
@@ -293,8 +303,8 @@ export default struct main {
       .backgroundColor("#383838")
       .shadow({
         radius: this.shadowRadius,
-        color: Color.Black,
-        offsetX: vp2px(-20),
+        color: '#95000000',
+        offsetX: vp2px(-15),
         offsetY: vp2px(0)
       })
 
@@ -413,6 +423,93 @@ export default struct main {
             color: '#95000000'
           })
           .margin({ top: this.statusBarHeight + 51 })
+
+        Row() {
+          Image($rawfile('nocover.jpg'))
+            .width(60)
+            .aspectRatio(1)
+            .borderRadius(10)
+            .objectFit(ImageFit.Fill)
+            .margin({ left: 15, right: 5, bottom: 10 })
+          Column() {
+            Text("这是一个章节标题")
+              .fontColor(Color.White)
+              .fontSize(18)
+              .width('auto')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Text("作者")
+              .fontColor(Color.White)
+              .fontSize(16)
+              .width('auto')
+              .margin({ top: 5 })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          .margin({ bottom: 15 })
+          .alignItems(HorizontalAlign.Start)
+          .width('100%')
+          .layoutWeight(1)
+
+          Blank()
+            .margin({ bottom: 10 })
+
+          Button({ type: ButtonType.Circle }) {
+            Image($rawfile('rewind.png'))
+              .width(30)
+              .height(30)
+          }
+          .width(40)
+          .height(40)
+          .margin({ right: 5, bottom: 10 })
+          .backgroundColor('#00000000')
+          .onClick(() => {
+
+          })
+
+          Button({ type: ButtonType.Circle }) {
+            Image(this.isPlaying === true ? $rawfile('suspend.png') : $rawfile('play.png'))
+              .width(30)
+              .height(30)
+          }
+          .width(50)
+          .height(50)
+          .margin({ right: 5, bottom: 10 })
+          .backgroundColor('#383838')
+          .onClick(() => {
+            if (this.isPlaying === true) {
+              this.isPlaying = false
+            } else {
+              this.isPlaying = true
+            }
+          })
+
+          Button({ type: ButtonType.Circle }) {
+            Image($rawfile('forward.png'))
+              .width(30)
+              .height(30)
+          }
+          .width(40)
+          .height(40)
+          .margin({ right: 5, bottom: 10 })
+          .backgroundColor('#00000000')
+          .onClick(() => {
+
+          })
+        }
+        .width('100%')
+        .height(90)
+        .backgroundColor('#232323')
+        .shadow({
+          offsetX: 0,
+          offsetY: -12,
+          radius: 10,
+          color: '#95000000'
+        })
+        .position({
+          y: this.displayHeight - 90
+        })
+        .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.None)
       }
       .alignContent(Alignment.Top)
     }
@@ -431,7 +528,7 @@ export default struct main {
     .sideBarPosition(SideBarPosition.End)
     .onChange((show: boolean) => {
       if (show === true) {
-        this.shadowRadius = 500
+        this.shadowRadius = 50
         this.sidebarShow = true
       } else {
         this.shadowRadius = 0

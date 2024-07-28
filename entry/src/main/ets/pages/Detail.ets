@@ -3,6 +3,7 @@ import { deviceInfo } from '@kit.BasicServicesKit';
 @Component
 export default struct Detail {
   @State coverWidth: string = "80%"
+  @Consume startPlayingTransfer: boolean
 
   aboutToAppear() {
     if (deviceInfo.deviceType === 'phone') {
@@ -47,6 +48,9 @@ export default struct Detail {
             .width('100%')
             .height(40)
             .layoutWeight(1)
+            .onClick(() => {
+              this.startPlayingTransfer = true
+            })
 
             Button({ type: ButtonType.Normal }) {
               Image($rawfile('download.png'))
