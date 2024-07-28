@@ -1,0 +1,442 @@
+import window from '@ohos.window';
+import { router, promptAction } from '@kit.ArkUI';
+import library from './tabs/Library'
+import { getLogout, getLibraries, getLibrarieItems } from '../api/Api'
+import { Library, LibraryItem } from '../api/Interface'
+import Detail from './Detail'
+
+let libraries: Library[] = []
+let libraryItems: LibraryItem[] = []
+
+class RouTmp {
+  server: string = ''
+  username: string = ''
+}
+
+@Entry
+@Component
+export default struct main {
+  @State statusBarHeight: number = 0;
+  @State index: number = 0;
+  @State pageIndex: number = 0;
+  @Provide @Watch('changePage') PageIndexTransfer: number = this.pageIndex
+  @State sidebarShow: boolean = false;
+  @State selectedLibrary: string = '';
+  @State selectedLibraryId: string = '';
+  @State shadowRadius: number = 0;
+  private controller: TabsController = new TabsController();
+  private params: RouTmp = router.getParams() as RouTmp
+  @Provide pageStack: NavPathStack = new NavPathStack()
+
+  changePage() {
+    if (this.PageIndexTransfer === 3) {
+      this.pageIndex = 3
+    }
+  }
+
+  @Builder
+  bindMenuBuilder(libraries: Library[]) {
+    Menu() {
+      ForEach(libraries, (item: number, index) => {
+        MenuItem({ content: libraries[index].name })
+          .onClick(() => {
+            if (this.selectedLibrary !== libraries[index].name) {
+              this.selectedLibrary = libraries[index].name
+              this.selectedLibraryId = libraries[index].id
+              this.pageIndex = 0
+              this.PageIndexTransfer = 0
+            }
+          })
+          .width('auto')
+          .height('auto')
+          .borderRadius(10)
+      })
+    }
+    .radius(10)
+  }
+
+  @Builder
+  titlebar() {
+    Row() {
+      Row() {
+        Image($rawfile('logo.png'))
+          .width(40)
+          .height(40)
+          .margin({ left: 15 })
+          .visibility(this.pageIndex === 3 ? Visibility.None : Visibility.Visible)
+        Button({ type: ButtonType.Normal }) {
+          Image($rawfile('return.png'))
+            .height(32)
+            .width(32)
+        }
+        .borderRadius(5)
+        .width(40)
+        .height(40)
+        .margin({ left: 15 })
+        .backgroundColor('#00000000')
+        .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+        .onClick(() => {
+          this.pageIndex = 0
+          this.PageIndexTransfer = 0
+        })
+
+        Text(this.selectedLibrary)
+          .width('auto')
+          .height(32)
+          .fontSize(16)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .textAlign(TextAlign.Center)
+          .margin({ left: 10 })
+          .padding({ left: 10, right: 10 })
+          .fontColor(Color.White)
+          .borderRadius(5)
+          .backgroundColor('#30cccccc')
+          .bindMenu(this.bindMenuBuilder(libraries))
+      }
+      .alignItems(VerticalAlign.Center)
+      .height(40)
+
+      Row() {
+        TextInput({
+          placeholder: "搜索 ..."
+        })
+          .enterKeyType(EnterKeyType.Search)
+          .caretColor('#95ffffff')
+          .width('40%')
+          .height(32)
+          .margin({ right: 55 })
+          .backgroundColor('#30cccccc')
+          .fontColor('#95ffffff')
+          .placeholderColor('#60ffffff')
+          .onSubmit((value) => {
+
+          })
+      }
+      .alignItems(VerticalAlign.Center)
+      .height(40)
+    }
+    .width("100%")
+    .height('100%')
+    .backgroundColor('#232323')
+    .alignItems(VerticalAlign.Center)
+    .justifyContent(FlexAlign.SpaceBetween)
+    .padding({ top: 5, bottom: 10 })
+  }
+
+  @Builder
+  TabBuilder(title: string, index: number, icon: Resource) {
+    if (this.index === index) {
+      Column() {
+        Text(title)
+          .fontSize(16)
+          .width('100%')
+          .height('100%')
+          .fontColor(Color.White)
+          .textAlign(TextAlign.Center)
+      }
+      .width('100%')
+      .height('100%')
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#232323')
+      .onClick(() => {
+        this.index = index;
+        this.controller.changeIndex(index);
+      })
+    } else {
+      Column() {
+        Image(icon)
+          .width(20)
+          .height(20)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#2F3130')
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.index = index;
+        this.controller.changeIndex(index);
+      })
+    }
+  }
+
+  private getStatusBarHeight() {
+    window.getLastWindow(getContext(this), (error, topWindow) => {
+      if (topWindow) {
+        let area = topWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+        this.statusBarHeight = px2vp(area.topRect.height)
+      }
+    });
+  }
+
+  async aboutToAppear() {
+    this.getStatusBarHeight()
+    libraries = await getLibraries()
+    this.selectedLibrary = libraries[0].name
+    libraries.forEach(async (element) => {
+      let libraryItem = await getLibrarieItems(element.id)
+      libraryItems.concat(libraryItem)
+    });
+  }
+
+  build() {
+    SideBarContainer(SideBarContainerType.Overlay) {
+      Column() {
+        Text("欢迎，" + this.params.username)
+          .width("100%")
+          .height(40)
+          .fontSize(20)
+          .textAlign(TextAlign.Start)
+          .fontColor(Color.White)
+          .margin({ left: 35, top: this.statusBarHeight + 7 })
+        Row() {
+          Image($rawfile("tabs/home.png"))
+            .width(20)
+            .height(20)
+            .margin({ left: 20 })
+          Text("首页")
+            .width("auto")
+            .height("30")
+            .fontSize(20)
+            .textAlign(TextAlign.Start)
+            .fontColor(Color.White)
+            .margin({ left: 15 })
+        }
+        .width("100%")
+        .height(60)
+        .margin({ top: 15 })
+        .backgroundColor(this.pageIndex === 0 ? '#4F5052' : '#00000000')
+        .onClick(() => {
+          this.pageIndex = 0
+          this.PageIndexTransfer = 0
+          this.sidebarShow = false
+        })
+
+        Row() {
+          Image($rawfile("tabs/home.png"))
+            .width(20)
+            .height(20)
+            .margin({ left: 20 })
+          Text("用户信息统计")
+            .width("auto")
+            .height("30")
+            .fontSize(20)
+            .textAlign(TextAlign.Start)
+            .fontColor(Color.White)
+            .margin({ left: 15 })
+        }
+        .width("100%")
+        .height(60)
+        .backgroundColor(this.pageIndex === 1 ? '#4F5052' : '#00000000')
+        .onClick(() => {
+          this.pageIndex = 1
+          this.PageIndexTransfer = 1
+          this.sidebarShow = false
+        })
+
+        Row() {
+          Image($rawfile("tabs/home.png"))
+            .width(20)
+            .height(20)
+            .margin({ left: 20 })
+          Text("设置")
+            .width("auto")
+            .height("30")
+            .fontSize(20)
+            .textAlign(TextAlign.Start)
+            .fontColor(Color.White)
+            .margin({ left: 15 })
+        }
+        .width("100%")
+        .height(60)
+        .backgroundColor(this.pageIndex === 2 ? '#4F5052' : '#00000000')
+        .onClick(() => {
+          this.pageIndex = 2
+          this.PageIndexTransfer = 2
+          this.sidebarShow = false
+        })
+
+        Row() {
+          Image($rawfile("tabs/home.png"))
+            .width(20)
+            .height(20)
+            .margin({ left: 20 })
+          Text("切换服务器/用户")
+            .width("auto")
+            .height("30")
+            .fontSize(20)
+            .textAlign(TextAlign.Start)
+            .fontColor(Color.White)
+            .margin({ left: 15 })
+        }
+        .width("100%")
+        .height(60)
+        .onClick(async () => {
+          this.sidebarShow = false
+          await getLogout()
+          promptAction.showToast({
+            message: '退出登录！',
+            duration: 500
+          });
+          router.replaceUrl({
+            url: 'pages/Login',
+            params: {
+              firstLogin: false
+            }
+          })
+        })
+      }
+      .width('100%')
+      .height("100%")
+      .backgroundColor("#383838")
+      .shadow({
+        radius: this.shadowRadius,
+        color: Color.Black,
+        offsetX: vp2px(-20),
+        offsetY: vp2px(0)
+      })
+
+
+      Stack() {
+        Navigation(this.pageStack) {
+          Tabs({
+            barPosition: BarPosition.Start,
+            controller: this.controller
+          }) {
+            TabContent() {
+              Column()
+                .width('100%')
+                .height('100%')
+                .backgroundImage($rawfile('background.jpg'))
+                .backgroundImageSize(ImageSize.Cover)
+            }
+            .width('100%')
+            .height('100%')
+            .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home_a.png')))
+
+            TabContent() {
+              library({ libraryItems })
+            }
+            .width('100%')
+            .height('100%')
+            .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/home_a.png')))
+
+            TabContent() {
+              Column()
+                .width('100%')
+                .height('100%')
+                .backgroundImage($rawfile('background.jpg'))
+                .backgroundImageSize(ImageSize.Cover)
+            }
+            .width('100%')
+            .height('100%')
+            .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/home_a.png')))
+
+            TabContent() {
+              Column()
+                .width('100%')
+                .height('100%')
+                .backgroundColor("#333333")
+            }
+            .width('100%')
+            .height('100%')
+            .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/home_a.png')))
+
+            TabContent() {
+              Column()
+                .width('100%')
+                .height('100%')
+                .backgroundColor("#333333")
+            }
+            .width('100%')
+            .height('100%')
+            .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/home_a.png')))
+          }
+          .width("100%")
+          .height('100%')
+          .barHeight(40)
+          .onChange((index: number) => {
+            this.index = index
+          })
+          .visibility(this.pageIndex === 0 ? Visibility.Visible : Visibility.None)
+
+          Column() {
+            Text("用户信息统计")
+              .fontSize(40)
+              .fontColor(Color.White)
+              .width('100%')
+              .height('100%')
+              .textAlign(TextAlign.Center)
+          }
+          .backgroundColor("#333333")
+          .width("100%")
+          .height('100%')
+          .visibility(this.pageIndex === 1 ? Visibility.Visible : Visibility.None)
+
+          Column() {
+            Text("设置")
+              .fontSize(40)
+              .fontColor(Color.White)
+              .width('100%')
+              .height('100%')
+              .textAlign(TextAlign.Center)
+          }
+          .backgroundColor("#333333")
+          .width("100%")
+          .height('100%')
+          .visibility(this.pageIndex === 2 ? Visibility.Visible : Visibility.None)
+
+          Column() {
+            Detail()
+          }
+          .backgroundColor("#333333")
+          .width("100%")
+          .height('100%')
+          .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+        }
+        .mode(NavigationMode.Stack)
+        .padding({ top: this.statusBarHeight })
+        .title(this.titlebar())
+        .titleMode(NavigationTitleMode.Mini)
+        .hideBackButton(true)
+        .backgroundColor('#232323')
+
+        Column()
+          .width('100%')
+          .height(5)
+          .shadow({
+            offsetX: 0,
+            offsetY: 12,
+            radius: 10,
+            color: '#95000000'
+          })
+          .margin({ top: this.statusBarHeight + 51 })
+      }
+      .alignContent(Alignment.Top)
+    }
+    .width("100%")
+    .height('100%')
+    .showSideBar(this.sidebarShow)
+    .controlButton({
+      top: this.statusBarHeight + 13,
+      width: 26,
+      height: 26,
+      icons: {
+        shown: $rawfile('sidebar.png'),
+        hidden: $rawfile('sidebar.png')
+      }
+    })
+    .sideBarPosition(SideBarPosition.End)
+    .onChange((show: boolean) => {
+      if (show === true) {
+        this.shadowRadius = 500
+        this.sidebarShow = true
+      } else {
+        this.shadowRadius = 0
+        this.sidebarShow = false
+      }
+    })
+  }
+}
