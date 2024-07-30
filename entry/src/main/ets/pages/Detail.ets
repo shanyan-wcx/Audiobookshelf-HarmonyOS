@@ -1,9 +1,18 @@
 import { deviceInfo } from '@kit.BasicServicesKit';
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { common } from '@kit.AbilityKit';
+import { LibraryItem, Chapter } from '../api/Interface'
+import { getItem } from '../api/Api'
+
+let context = getContext(this) as common.UIAbilityContext;
+let filesDir = context.filesDir;
 
 @Component
 export default struct Detail {
-  @State coverWidth: string = "80%"
   @Consume startPlayingTransfer: boolean
+  @State coverWidth: string = "80%"
+  @Consume itemTransfer: LibraryItem
+  @Consume nowPlayingChapters: Chapter[]
 
   aboutToAppear() {
     if (deviceInfo.deviceType === 'phone') {
@@ -13,22 +22,24 @@ export default struct Detail {
     } else if (deviceInfo.deviceType === 'tablet') {
       this.coverWidth = "320"
     }
+    console.log("详情页项目", this.itemTransfer.media.metadata.title)
   }
 
   build() {
     Column() {
-      Image($rawfile('nocover.jpg'))
+      Image(filesDir + `/covers/${this.itemTransfer.id}.webp`)
+        .alt($rawfile('nocover.jpg'))
         .width(this.coverWidth)
         .aspectRatio(1)
         .borderRadius(10)
         .objectFit(ImageFit.Fill)
         .margin({ top: 20 })
       Column() {
-        Text("测试标题")
+        Text(this.itemTransfer.media.metadata.title)
           .fontSize(28)
           .fontColor(Color.White)
           .fontWeight(FontWeight.Bold)
-        Text("测试副标题测试副标题")
+        Text(this.itemTransfer.media.metadata.subtitle)
           .fontSize(18)
           .fontColor('#E5ECF2')
           .margin({ top: 5 })
@@ -48,7 +59,8 @@ export default struct Detail {
             .width('100%')
             .height(40)
             .layoutWeight(1)
-            .onClick(() => {
+            .onClick(async () => {
+              this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.startPlayingTransfer = true
             })
 
@@ -116,7 +128,7 @@ export default struct Detail {
                 .width('auto')
                 .height('auto')
                 .textAlign(TextAlign.Start)
-              Text("测试作者")
+              Text(this.itemTransfer.media.metadata.authorName)
                 .fontSize(14)
                 .fontColor(Color.White)
                 .width('100%')
@@ -139,7 +151,7 @@ export default struct Detail {
                 .width('auto')
                 .height('auto')
                 .textAlign(TextAlign.Start)
-              Text("测试时长")
+              Text(this.itemTransfer.media.duration.toString())
                 .fontSize(14)
                 .fontColor(Color.White)
                 .width('100%')
@@ -165,7 +177,7 @@ export default struct Detail {
                 .width('auto')
                 .height('auto')
                 .textAlign(TextAlign.Start)
-              Text("测试演播者")
+              Text(this.itemTransfer.media.metadata.narratorName)
                 .fontSize(14)
                 .fontColor(Color.White)
                 .width('100%')
@@ -188,7 +200,7 @@ export default struct Detail {
                 .width('auto')
                 .height('auto')
                 .textAlign(TextAlign.Start)
-              Text("测试流派")
+              Text(this.itemTransfer.media.metadata.genres.toString())
                 .fontSize(14)
                 .fontColor(Color.White)
                 .width('100%')
@@ -214,7 +226,7 @@ export default struct Detail {
               .width('auto')
               .height('auto')
               .textAlign(TextAlign.Start)
-            Text("测试年份")
+            Text(this.itemTransfer.media.metadata.publishedYear)
               .fontSize(14)
               .fontColor(Color.White)
               .width('100%')
@@ -237,7 +249,7 @@ export default struct Detail {
 
         Column() {
           Text("\u3000\u3000" +
-            "这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍这是一段测试介绍。")
+          this.itemTransfer.media?.metadata.description)
             .fontSize(14)
             .fontColor(Color.White)
             .width("100%")

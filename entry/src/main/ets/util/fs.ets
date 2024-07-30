@@ -45,3 +45,22 @@ export function writeConfig(config: Config) {
   console.log("写入配置", JSON.stringify(config))
   fs.closeSync(file);
 }
+
+export function createCoverDir() {
+  let dirStatus = fs.accessSync(filesDir + '/covers')
+  if (dirStatus === false) {
+    console.log("封面目录不存在。")
+    fs.mkdirSync(filesDir + '/covers', false)
+    console.log("创建封面目录", filesDir + '/covers')
+  } else {
+    console.log("封面目录存在。")
+    console.log("封面目录位置", filesDir + '/covers')
+  }
+}
+
+export function downloadCover(coverName: string, cover: ArrayBuffer) {
+  let file = fs.openSync(filesDir + `/covers/${coverName}.webp`, fs.OpenMode.READ_WRITE)
+  fs.writeSync(file.fd, cover);
+  console.log("获取封面成功", `${coverName}.webp`)
+  fs.closeSync(file);
+}

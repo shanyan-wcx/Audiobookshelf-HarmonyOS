@@ -1,12 +1,13 @@
 import window from '@ohos.window';
-import { router, promptAction, display } from '@kit.ArkUI';
+import { router, promptAction, display, curves } from '@kit.ArkUI';
 import library from './tabs/Library'
-import { getLogout, getLibraries, getLibrarieItems } from '../api/Api'
-import { Library, LibraryItem } from '../api/Interface'
+import { getLogout, getLibraries } from '../api/Api'
+import { Library, LibraryItem, Chapter } from '../api/Interface'
 import Detail from './Detail'
+import Play from './Play'
 
 let libraries: Library[] = []
-let libraryItems: LibraryItem[] = []
+let libraryItems: LibraryItem[][] = []
 
 class RouTmp {
   server: string = ''
@@ -23,24 +24,86 @@ export default struct main {
   @State sidebarShow: boolean = false;
   @State selectedLibrary: string = '';
   @State selectedLibraryId: string = '';
+  @State selectedLibraryIndex: number = 0;
   @State shadowRadius: number = 0;
   @State isPlaying: boolean = true
+  @Provide @Watch('changePage') isPlayingTransfer: boolean = this.isPlaying
   @State startPlaying: boolean = false
+  @State showPlay: boolean = false;
+  @Provide @Watch('changePage') showPlayTransfer: boolean = this.showPlay;
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
   displayHeight: number = 0
   private controller: TabsController = new TabsController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
+  @State currentItem: LibraryItem = {
+    id: '',
+    ino: '',
+    oldLibraryItemId: '',
+    libraryId: '',
+    folderId: '',
+    path: '',
+    relPath: '',
+    isFile: false,
+    mtimeMs: 0,
+    ctimeMs: 0,
+    birthtimeMs: 0,
+    addedAt: 0,
+    updatedAt: 0,
+    isMissing: false,
+    isInvalid: false,
+    mediaType: '',
+    media: {
+      id: '',
+      metadata: {
+        title: '',
+        titleIgnorePrefix: '',
+        subtitle: null,
+        authorName: '',
+        authorNameLF: '',
+        narratorName: '',
+        seriesName: '',
+        genres: [],
+        publishedYear: '',
+        publishedDate: null,
+        publisher: null,
+        description: '',
+        isbn: null,
+        asin: null,
+        language: '',
+        explicit: false,
+        abridged: false
+      },
+      coverPath: '',
+      tags: [],
+      numTracks: 0,
+      numAudioFiles: 0,
+      numChapters: 0,
+      duration: 0,
+      size: 0,
+    },
+    numFiles: 0,
+    size: 0
+  }
+  @Provide @Watch('changePage') itemTransfer: LibraryItem = this.currentItem
+  @Provide nowPlayingChapters: Chapter[] = []
 
   changePage() {
     if (this.PageIndexTransfer === 3) {
       this.pageIndex = 3
     }
-    if (this.startPlayingTransfer === true) {
-      this.startPlaying = true
-    } else {
-      this.startPlaying = false
+    this.startPlaying = this.startPlayingTransfer
+    this.showPlay = this.showPlayTransfer
+    this.isPlaying = this.isPlayingTransfer
+    this.currentItem = this.itemTransfer
+  }
+
+  @Builder
+  bindContentCoverBuilder() {
+    Column() {
+      Play()
     }
+    .transition(TransitionEffect.translate({ y: 1000 }).animation({ curve: curves.springMotion(0.4, 1) }))
   }
 
   @Builder
@@ -52,6 +115,7 @@ export default struct main {
             if (this.selectedLibrary !== libraries[index].name) {
               this.selectedLibrary = libraries[index].name
               this.selectedLibraryId = libraries[index].id
+              this.selectedLibraryIndex = index
               this.pageIndex = 0
               this.PageIndexTransfer = 0
             }
@@ -185,10 +249,11 @@ export default struct main {
     this.displayHeight = px2vp(display.getDefaultDisplaySync().height)
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
-    libraries.forEach(async (element) => {
-      let libraryItem = await getLibrarieItems(element.id)
-      libraryItems.concat(libraryItem)
-    });
+    this.selectedLibraryId = libraries[0].id
+    // libraries.forEach(async (element) => {
+    //   let libraryItem = await getLibrarieItems(element.id)
+    //   libraryItems.push(libraryItem)
+    // });
   }
 
   build() {
@@ -327,7 +392,7 @@ export default struct main {
             .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home_a.png')))
 
             TabContent() {
-              library({ libraryItems })
+              library({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
@@ -405,6 +470,7 @@ export default struct main {
           .width("100%")
           .height('100%')
           .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+          .transition(TransitionEffect.opacity(0).animation({ curve: curves.springMotion(0.6, 1) }))
         }
         .mode(NavigationMode.Stack)
         .padding({ top: this.statusBarHeight })
@@ -432,13 +498,13 @@ export default struct main {
             .objectFit(ImageFit.Fill)
             .margin({ left: 15, right: 5, bottom: 10 })
           Column() {
-            Text("这是一个章节标题")
+            Text(this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : "")
               .fontColor(Color.White)
               .fontSize(18)
               .width('auto')
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-            Text("作者")
+            Text(this.currentItem.media.metadata.authorName)
               .fontColor(Color.White)
               .fontSize(16)
               .width('auto')
@@ -477,11 +543,8 @@ export default struct main {
           .margin({ right: 5, bottom: 10 })
           .backgroundColor('#383838')
           .onClick(() => {
-            if (this.isPlaying === true) {
-              this.isPlaying = false
-            } else {
-              this.isPlaying = true
-            }
+            this.isPlaying = !this.isPlaying
+            this.isPlayingTransfer = this.isPlaying
           })
 
           Button({ type: ButtonType.Circle }) {
@@ -510,6 +573,13 @@ export default struct main {
           y: this.displayHeight - 90
         })
         .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.None)
+        .bindContentCover(this.showPlay, this.bindContentCoverBuilder(), {
+          modalTransition: ModalTransition.NONE,
+        })
+        .onClick(() => {
+          this.showPlayTransfer = true;
+        })
+        .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.4, 1) }))
       }
       .alignContent(Alignment.Top)
     }

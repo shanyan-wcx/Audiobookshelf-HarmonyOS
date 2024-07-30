@@ -216,6 +216,7 @@ export default struct login {
                   }
                 })
               } else {
+                this.showProgress = false
                 console.error("登陆失败！")
                 promptAction.showToast({
                   message: '登陆失败！',

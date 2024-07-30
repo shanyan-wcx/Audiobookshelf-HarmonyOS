@@ -1,14 +1,21 @@
 import { router } from '@kit.ArkUI';
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { common } from '@kit.AbilityKit';
 import { LibraryItem } from '../../api/Interface'
-import { getCover } from '../../api/Api'
+import { getCover, getLibrarieItems } from '../../api/Api'
 import { deviceInfo } from '@kit.BasicServicesKit';
+
+let context = getContext(this) as common.UIAbilityContext;
+let filesDir = context.filesDir;
 
 @Component
 export default struct library {
   @State progressValue: number = 100;
   @State columnsTemplate: string = "1fr 1fr"
   @Consume PageIndexTransfer: number
-  libraryItems: LibraryItem[] = []
+  libraryId: string = ''
+  @State libraryItems: LibraryItem[] = []
+  @Consume itemTransfer: LibraryItem
   private books: string[] =
     ['Book 1', 'Book 2', 'Book 3', 'Book 4', 'Book 5', 'Book 6', 'Book 7', 'Book 8',
       'Book 9', 'Book 10', 'Book 11', 'Book 12', 'Book 13'];
@@ -21,30 +28,39 @@ export default struct library {
   async aboutToAppear() {
     if (deviceInfo.deviceType === 'phone') {
       this.columnsTemplate = "1fr 1fr"
-    } else if(deviceInfo.deviceType === '2in1') {
+    } else if (deviceInfo.deviceType === '2in1') {
       this.columnsTemplate = "1fr 1fr 1fr"
-    }else if(deviceInfo.deviceType === 'tablet'){
+    } else if (deviceInfo.deviceType === 'tablet') {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
-    // this.libraryItems.forEach(async (element) => {
-    //   console.log(element.id)
-    //   // await getCover(element.id)
-    // });
+
+    console.log("获取媒体库项目", this.libraryId)
+    this.libraryItems = await getLibrarieItems(this.libraryId)
+
+    this.libraryItems.forEach(async (element) => {
+      try {
+        await getCover(element.id)
+      } catch (error) {
+        console.error(JSON.stringify(error));
+        console.log("获取封面失败。")
+      }
+    });
   }
 
   build() {
     Column() {
       Grid() {
-        ForEach(this.books, (item: number, index) => {
+        ForEach(this.libraryItems, (item: number, index) => {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
-              Image(this.covers[index])
+              Image(filesDir + `/covers/${this.libraryItems[index].id}.webp`)
                 .alt($rawfile('nocover.jpg'))
                 .width('100%')
                 .aspectRatio(1)
                 .borderRadius(10)
                 .objectFit(ImageFit.Fill)
                 .onClick(() => {
+                  this.itemTransfer = this.libraryItems[index]
                   this.PageIndexTransfer = 3
                 })
               Progress({

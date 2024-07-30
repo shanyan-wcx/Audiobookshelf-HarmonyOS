@@ -1,13 +1,12 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
+import { promptAction } from '@kit.ArkUI';
 import { LoginInfo, User, Library, LibraryItem, Chapter } from './Interface'
+import { downloadCover } from '../util/fs'
 
 // axios.defaults.baseURL = 'http://192.168.0.106:13378'
 axios.defaults.headers.post['Content-Type'] = 'application/json'
 
 let authToken: string = ""
-let itemId: string = ""
-let libraryItems: string[] = []
-let chapters: string[] = []
 let baseUrl = ""
 
 function createApi() {
@@ -63,6 +62,10 @@ export async function getLibraries(): Promise<Library[]> {
   } catch (error) {
     console.log("获取媒体库失败！")
     console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取媒体库失败，请检查网络！',
+      duration: 500
+    });
   }
   return library
 }
@@ -85,12 +88,17 @@ export async function getLibrarieItems(libraryId: string): Promise<LibraryItem[]
     return libraryItems
   } catch (error) {
     console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取媒体库内容失败，请检查网络！',
+      duration: 500
+    });
     return []
   }
 }
 
-export async function getItem() {
+export async function getItem(itemId: string): Promise<Chapter[]>{
   const api: Axios = createApi()
+  let chapters: string[] = []
   try {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}`)
@@ -98,8 +106,14 @@ export async function getItem() {
       chapters.push(element.title)
     });
     console.log("Chapters:", chapters);
+    return response.data.media.chapters
   } catch (error) {
     console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取章节失败，请检查网络！',
+      duration: 500
+    });
+    return []
   }
 }
 
@@ -109,8 +123,12 @@ export async function getCover(itemId: string) {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover`,
         { params: { responseType: 'arraybuffer' } })
-    console.log("图片", response.data)
+    downloadCover(itemId, response.data)
   } catch (error) {
     console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取封面失败，请检查网络！',
+      duration: 500
+    });
   }
 }
