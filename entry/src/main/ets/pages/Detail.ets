@@ -1,5 +1,4 @@
-import { deviceInfo } from '@kit.BasicServicesKit';
-import { fileIo as fs } from '@kit.CoreFileKit';
+import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { LibraryItem, Chapter } from '../api/Interface'
 import { getItem } from '../api/Api'
@@ -7,22 +6,42 @@ import { getItem } from '../api/Api'
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
 
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  let formattedTime = '';
+  if (hours > 0) {
+    formattedTime += `${hours} hr `;
+  }
+  formattedTime += `${minutes} min`;
+
+  return formattedTime;
+}
+
 @Component
 export default struct Detail {
+  @State displayWidth: number = 0
   @Consume startPlayingTransfer: boolean
-  @State coverWidth: string = "80%"
+  @State coverWidth: string = "20%"
+  @State descriptionLine: number = 0
   @Consume itemTransfer: LibraryItem
+  @Consume isPlayingTransfer: boolean
+  @Consume nowPlayingItem: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
 
   aboutToAppear() {
-    if (deviceInfo.deviceType === 'phone') {
+    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = "80%"
-    } else if (deviceInfo.deviceType === '2in1') {
-      this.coverWidth = "320"
-    } else if (deviceInfo.deviceType === 'tablet') {
-      this.coverWidth = "320"
+      this.descriptionLine = 5
+    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      this.coverWidth = "280"
+      this.descriptionLine = 4
+    } else if (this.displayWidth >= 840) {
+      this.coverWidth = "240"
+      this.descriptionLine = 3
     }
-    console.log("详情页项目", this.itemTransfer.media.metadata.title)
   }
 
   build() {
@@ -39,10 +58,14 @@ export default struct Detail {
           .fontSize(28)
           .fontColor(Color.White)
           .fontWeight(FontWeight.Bold)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(this.itemTransfer.media.metadata.subtitle)
           .fontSize(18)
           .fontColor('#E5ECF2')
           .margin({ top: 5 })
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
 
       Column() {
@@ -62,6 +85,8 @@ export default struct Detail {
             .onClick(async () => {
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.startPlayingTransfer = true
+              this.isPlayingTransfer = true
+              this.nowPlayingItem = this.itemTransfer
             })
 
             Button({ type: ButtonType.Normal }) {
@@ -105,7 +130,7 @@ export default struct Detail {
               .fontSize(14)
               .fontColor(Color.White)
               .fontWeight(FontWeight.Bold)
-            Text("剩余 58 hr 23 min")
+            Text("剩余 " + formatDuration(this.itemTransfer.media.duration))
               .fontSize(12)
               .fontColor('#8F9396')
           }
@@ -254,7 +279,7 @@ export default struct Detail {
             .fontColor(Color.White)
             .width("100%")
             .height('auto')
-            .maxLines(5)
+            .maxLines(this.descriptionLine)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
         .margin({ top: 10 })

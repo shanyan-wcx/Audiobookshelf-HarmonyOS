@@ -26,7 +26,8 @@ export async function getLogin(loginInfo: LoginInfo) {
   baseUrl = loginInfo.server
   try {
     const response: AxiosResponse = await axios.post<string, AxiosResponse<string>, User>('/login', user, {
-      baseURL: baseUrl
+      baseURL: baseUrl,
+      timeout: 10000
     })
     console.log("Token:", JSON.stringify(response.data.user.token));
     authToken = response.data.user.token

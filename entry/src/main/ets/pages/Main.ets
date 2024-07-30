@@ -7,7 +7,6 @@ import Detail from './Detail'
 import Play from './Play'
 
 let libraries: Library[] = []
-let libraryItems: LibraryItem[][] = []
 
 class RouTmp {
   server: string = ''
@@ -22,6 +21,7 @@ export default struct main {
   @State pageIndex: number = 0;
   @Provide @Watch('changePage') PageIndexTransfer: number = this.pageIndex
   @State sidebarShow: boolean = false;
+  @Provide @Watch('changePage') showProgressTransfer: boolean = false
   @State selectedLibrary: string = '';
   @State selectedLibraryId: string = '';
   @State selectedLibraryIndex: number = 0;
@@ -32,7 +32,6 @@ export default struct main {
   @State showPlay: boolean = false;
   @Provide @Watch('changePage') showPlayTransfer: boolean = this.showPlay;
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
-  displayHeight: number = 0
   private controller: TabsController = new TabsController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
@@ -86,6 +85,7 @@ export default struct main {
     size: 0
   }
   @Provide @Watch('changePage') itemTransfer: LibraryItem = this.currentItem
+  @Provide nowPlayingItem: LibraryItem = this.currentItem
   @Provide nowPlayingChapters: Chapter[] = []
 
   changePage() {
@@ -246,14 +246,11 @@ export default struct main {
 
   async aboutToAppear() {
     this.getStatusBarHeight()
-    this.displayHeight = px2vp(display.getDefaultDisplaySync().height)
+    this.showProgressTransfer = true
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
-    // libraries.forEach(async (element) => {
-    //   let libraryItem = await getLibrarieItems(element.id)
-    //   libraryItems.push(libraryItem)
-    // });
+    this.showProgressTransfer = false
   }
 
   build() {
@@ -490,101 +487,108 @@ export default struct main {
           })
           .margin({ top: this.statusBarHeight + 51 })
 
-        Row() {
-          Image($rawfile('nocover.jpg'))
-            .width(60)
-            .aspectRatio(1)
-            .borderRadius(10)
-            .objectFit(ImageFit.Fill)
-            .margin({ left: 15, right: 5, bottom: 10 })
-          Column() {
-            Text(this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : "")
-              .fontColor(Color.White)
-              .fontSize(18)
-              .width('auto')
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-            Text(this.currentItem.media.metadata.authorName)
-              .fontColor(Color.White)
-              .fontSize(16)
-              .width('auto')
-              .margin({ top: 5 })
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Column() {
+          Row() {
+            Image($rawfile('nocover.jpg'))
+              .width(60)
+              .aspectRatio(1)
+              .borderRadius(10)
+              .objectFit(ImageFit.Fill)
+              .margin({ left: 15, right: 5, bottom: 10 })
+            Column() {
+              Text(this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : "")
+                .fontColor(Color.White)
+                .fontSize(18)
+                .width('auto')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+              Text(this.nowPlayingItem.media.metadata.authorName)
+                .fontColor(Color.White)
+                .fontSize(16)
+                .width('auto')
+                .margin({ top: 5 })
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .margin({ bottom: 15 })
+            .alignItems(HorizontalAlign.Start)
+            .width('100%')
+            .layoutWeight(1)
+
+            Blank()
+              .margin({ bottom: 10 })
+
+            Button({ type: ButtonType.Circle }) {
+              Image($rawfile('rewind.png'))
+                .width(30)
+                .height(30)
+            }
+            .width(40)
+            .height(40)
+            .margin({ right: 5, bottom: 10 })
+            .backgroundColor('#00000000')
+            .onClick(() => {
+
+            })
+
+            Button({ type: ButtonType.Circle }) {
+              Image(this.isPlaying === true ? $rawfile('suspend.png') : $rawfile('play.png'))
+                .width(30)
+                .height(30)
+            }
+            .width(50)
+            .height(50)
+            .margin({ right: 5, bottom: 10 })
+            .backgroundColor('#383838')
+            .onClick(() => {
+              this.isPlaying = !this.isPlaying
+              this.isPlayingTransfer = this.isPlaying
+            })
+
+            Button({ type: ButtonType.Circle }) {
+              Image($rawfile('forward.png'))
+                .width(30)
+                .height(30)
+            }
+            .width(40)
+            .height(40)
+            .margin({ right: 5, bottom: 10 })
+            .backgroundColor('#00000000')
+            .onClick(() => {
+
+            })
           }
-          .margin({ bottom: 15 })
-          .alignItems(HorizontalAlign.Start)
           .width('100%')
-          .layoutWeight(1)
-
-          Blank()
-            .margin({ bottom: 10 })
-
-          Button({ type: ButtonType.Circle }) {
-            Image($rawfile('rewind.png'))
-              .width(30)
-              .height(30)
-          }
-          .width(40)
-          .height(40)
-          .margin({ right: 5, bottom: 10 })
-          .backgroundColor('#00000000')
-          .onClick(() => {
-
+          .height(90)
+          .backgroundColor('#232323')
+          .shadow({
+            offsetX: 0,
+            offsetY: -12,
+            radius: 10,
+            color: '#95000000'
           })
-
-          Button({ type: ButtonType.Circle }) {
-            Image(this.isPlaying === true ? $rawfile('suspend.png') : $rawfile('play.png'))
-              .width(30)
-              .height(30)
-          }
-          .width(50)
-          .height(50)
-          .margin({ right: 5, bottom: 10 })
-          .backgroundColor('#383838')
-          .onClick(() => {
-            this.isPlaying = !this.isPlaying
-            this.isPlayingTransfer = this.isPlaying
+          .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.None)
+          .bindContentCover(this.showPlay, this.bindContentCoverBuilder(), {
+            modalTransition: ModalTransition.NONE,
           })
-
-          Button({ type: ButtonType.Circle }) {
-            Image($rawfile('forward.png'))
-              .width(30)
-              .height(30)
-          }
-          .width(40)
-          .height(40)
-          .margin({ right: 5, bottom: 10 })
-          .backgroundColor('#00000000')
           .onClick(() => {
-
+            this.showPlayTransfer = true;
+            setTimeout(() => {
+              this.startPlayingTransfer = false
+            }, 500);
           })
+          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.4, 1) }))
         }
         .width('100%')
-        .height(90)
-        .backgroundColor('#232323')
-        .shadow({
-          offsetX: 0,
-          offsetY: -12,
-          radius: 10,
-          color: '#95000000'
-        })
-        .position({
-          y: this.displayHeight - 90
-        })
-        .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.None)
-        .bindContentCover(this.showPlay, this.bindContentCoverBuilder(), {
-          modalTransition: ModalTransition.NONE,
-        })
-        .onClick(() => {
-          this.showPlayTransfer = true;
-        })
-        .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.4, 1) }))
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+        .hitTestBehavior(HitTestMode.Transparent)
       }
       .alignContent(Alignment.Top)
     }
     .width("100%")
     .height('100%')
+
     .showSideBar(this.sidebarShow)
     .controlButton({
       top: this.statusBarHeight + 13,
