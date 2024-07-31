@@ -1,6 +1,7 @@
 import window from '@ohos.window';
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Chapter } from '../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -111,7 +112,7 @@ export default struct Play {
         .width("100%")
         .justifyContent(FlexAlign.SpaceBetween)
 
-        Image(filesDir + `/covers/${this.itemTransfer.id}.webp`)
+        Image(fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`))
           .alt($rawfile('nocover.jpg'))
           .width(this.coverWidth)
           .aspectRatio(1)

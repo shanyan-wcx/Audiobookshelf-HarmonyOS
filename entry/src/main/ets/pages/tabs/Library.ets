@@ -1,5 +1,6 @@
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { LibraryItem } from '../../api/Interface'
 import { getCover, getLibrarieItems } from '../../api/Api'
 import Loading from '../Loading'
@@ -41,11 +42,14 @@ export default struct library {
     this.libraryItems = await getLibrarieItems(this.libraryId)
 
     this.libraryItems.forEach(async (element) => {
-      try {
-        await getCover(element.id)
-      } catch (error) {
-        console.error(JSON.stringify(error));
-        console.log("获取封面失败。")
+      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+      if (coverStatus === false) {
+        try {
+          await getCover(element.id)
+        } catch (error) {
+          console.error(JSON.stringify(error));
+          console.log("获取封面失败。")
+        }
       }
     });
     this.showProgressTransfer = false
@@ -58,7 +62,7 @@ export default struct library {
           ForEach(this.libraryItems, (item: number, index) => {
             GridItem() {
               Stack({ alignContent: Alignment.Bottom }) {
-                Image(filesDir + `/covers/${this.libraryItems[index].id}.webp`)
+                Image(fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItems[index].id}.jpg`))
                   .alt($rawfile('nocover.jpg'))
                   .width('100%')
                   .aspectRatio(1)

@@ -59,8 +59,8 @@ export function createCoverDir() {
 }
 
 export function downloadCover(coverName: string, cover: ArrayBuffer) {
-  let file = fs.openSync(filesDir + `/covers/${coverName}.webp`, fs.OpenMode.READ_WRITE)
+  let file = fs.openSync(filesDir + `/covers/${coverName}.jpg`, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE)
   fs.writeSync(file.fd, cover);
-  console.log("获取封面成功", `${coverName}.webp`)
+  console.log("获取封面成功", `${coverName}.jpg`)
   fs.closeSync(file);
 }

@@ -1,5 +1,6 @@
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Chapter } from '../api/Interface'
 import { getItem } from '../api/Api'
 
@@ -46,7 +47,7 @@ export default struct Detail {
 
   build() {
     Column() {
-      Image(filesDir + `/covers/${this.itemTransfer.id}.webp`)
+      Image(fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`))
         .alt($rawfile('nocover.jpg'))
         .width(this.coverWidth)
         .aspectRatio(1)

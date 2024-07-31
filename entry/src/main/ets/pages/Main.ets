@@ -1,10 +1,15 @@
 import window from '@ohos.window';
 import { router, promptAction, display, curves } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
+import { fileUri } from '@kit.CoreFileKit';
 import library from './tabs/Library'
 import { getLogout, getLibraries } from '../api/Api'
 import { Library, LibraryItem, Chapter } from '../api/Interface'
 import Detail from './Detail'
 import Play from './Play'
+
+let context = getContext(this) as common.UIAbilityContext;
+let filesDir = context.filesDir;
 
 let libraries: Library[] = []
 
@@ -489,7 +494,8 @@ export default struct main {
 
         Column() {
           Row() {
-            Image($rawfile('nocover.jpg'))
+            Image(fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`))
+              .alt($rawfile('nocover.jpg'))
               .width(60)
               .aspectRatio(1)
               .borderRadius(10)

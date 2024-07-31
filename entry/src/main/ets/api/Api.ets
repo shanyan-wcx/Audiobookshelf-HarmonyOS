@@ -102,7 +102,7 @@ export async function getItem(itemId: string): Promise<Chapter[]>{
   let chapters: string[] = []
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}`)
+      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}?expanded=1&include=progress`)
     response.data.media.chapters.forEach((element: Chapter) => {
       chapters.push(element.title)
     });
@@ -122,7 +122,7 @@ export async function getCover(itemId: string) {
   const api: Axios = createApi()
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover`,
+      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover?format=jpeg`,
         { params: { responseType: 'arraybuffer' } })
     downloadCover(itemId, response.data)
   } catch (error) {
