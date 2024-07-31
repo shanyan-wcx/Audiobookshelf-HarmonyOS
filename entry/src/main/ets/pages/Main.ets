@@ -2,9 +2,10 @@ import window from '@ohos.window';
 import { router, promptAction, display, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { getLogout, getLibraries, getLibrarieItems, getCover, getProgress } from '../api/Api'
+import { Library, LibraryItem, Chapter, Progress } from '../api/Interface'
 import library from './tabs/Library'
-import { getLogout, getLibraries, getLibrarieItems, getCover } from '../api/Api'
-import { Library, LibraryItem, Chapter } from '../api/Interface'
+import home from './tabs/Home'
 import Detail from './Detail'
 import Play from './Play'
 
@@ -41,6 +42,7 @@ export default struct main {
   private controller: TabsController = new TabsController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
+  @Provide allProgress: Progress[] = []
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -94,7 +96,7 @@ export default struct main {
   @Provide nowPlayingItem: LibraryItem = this.currentItem
   @Provide nowPlayingChapters: Chapter[] = []
 
-  changePage() {
+  async changePage() {
     if (this.PageIndexTransfer === 3) {
       this.pageIndex = 3
     }
@@ -124,17 +126,16 @@ export default struct main {
               this.selectedLibraryIndex = index
               this.pageIndex = 0
               this.PageIndexTransfer = 0
-
-
               this.showProgressTransfer = true
+              this.allProgress = []
               console.log("获取媒体库项目", this.selectedLibraryId)
               this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-
               await Promise.all(this.libraryItems.map(async (element) => {
                 let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
                 if (coverStatus === false) {
                   try {
                     await getCover(element.id)
+                    this.allProgress.push(await getProgress(element.id))
                   } catch (error) {
                     console.error(JSON.stringify(error));
                     console.log("获取封面失败。")
@@ -142,8 +143,6 @@ export default struct main {
                 }
               }));
               this.showProgressTransfer = false
-
-
             }
           })
           .width('auto')
@@ -404,11 +403,13 @@ export default struct main {
             controller: this.controller
           }) {
             TabContent() {
-              Column()
-                .width('100%')
-                .height('100%')
-                .backgroundImage($rawfile('background.jpg'))
-                .backgroundImageSize(ImageSize.Cover)
+              Column() {
+                home({ libraryId: this.selectedLibraryId })
+              }
+              .width('100%')
+              .height('100%')
+              .backgroundImage($rawfile('background.jpg'))
+              .backgroundImageSize(ImageSize.Cover)
             }
             .width('100%')
             .height('100%')
@@ -524,12 +525,14 @@ export default struct main {
               .objectFit(ImageFit.Fill)
               .margin({ left: 15, right: 5, bottom: 10 })
             Column() {
-              Text(this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : "")
+              Marquee({
+                start: true,
+                step: 3,
+                src: this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : ""
+              })
                 .fontColor(Color.White)
                 .fontSize(18)
                 .width('auto')
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
               Text(this.nowPlayingItem.media.metadata.authorName)
                 .fontColor(Color.White)
                 .fontSize(16)

@@ -103,3 +103,16 @@ export interface Chapter {
   title: string;
 }
 
+export interface Progress {
+  id: string;
+  libraryItemId: string;
+  episodeId: string;
+  duration: number;
+  progress: number;
+  currentTime: number;
+  isFinished: boolean;
+  hideFromContinueListening: boolean;
+  lastUpdate: number;
+  startedAt: number;
+  finishedAt: number | null;
+}

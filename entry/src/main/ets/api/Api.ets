@@ -1,9 +1,8 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
-import { LoginInfo, User, Library, LibraryItem, Chapter } from './Interface'
+import { LoginInfo, User, Library, LibraryItem, Chapter, Progress } from './Interface'
 import { downloadCover } from '../util/fs'
 
-// axios.defaults.baseURL = 'http://192.168.0.106:13378'
 axios.defaults.headers.post['Content-Type'] = 'application/json'
 
 let authToken: string = ""
@@ -100,12 +99,64 @@ export async function getLibrarieItems(libraryId: string): Promise<LibraryItem[]
   }
 }
 
+export async function getLibrarieItemsInProgress(libraryId: string): Promise<LibraryItem[]> {
+  const api: Axios = createApi()
+  let libraryItems: LibraryItem[] = []
+  let itemTitles: string[] = []
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.aW4tcHJvZ3Jlc3M%3D`,
+        { params: { minified: true } })
+    response.data.results.forEach((element: LibraryItem) => {
+      libraryItems.push(element)
+    });
+    libraryItems.forEach(element => {
+      itemTitles.push(element.media.metadata.title)
+    });
+    console.log("进行中项目", itemTitles.toString());
+    return libraryItems
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取进行中项目失败，请检查网络！',
+      duration: 500
+    });
+    return []
+  }
+}
+
+export async function getLibrarieItemsFinished(libraryId: string): Promise<LibraryItem[]> {
+  const api: Axios = createApi()
+  let libraryItems: LibraryItem[] = []
+  let itemTitles: string[] = []
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.ZmluaXNoZWQ%3D`,
+        { params: { minified: true } })
+    response.data.results.forEach((element: LibraryItem) => {
+      libraryItems.push(element)
+    });
+    libraryItems.forEach(element => {
+      itemTitles.push(element.media.metadata.title)
+    });
+    console.log("已完成项目", itemTitles.toString());
+    return libraryItems
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取已完成项目失败，请检查网络！',
+      duration: 500
+    });
+    return []
+  }
+}
+
 export async function getItem(itemId: string): Promise<Chapter[]> {
   const api: Axios = createApi()
   let chapters: string[] = []
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}?expanded=1&include=progress`)
+      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}`)
     response.data.media.chapters.forEach((element: Chapter) => {
       chapters.push(element.title)
     });
@@ -134,5 +185,31 @@ export async function getCover(itemId: string) {
       message: '获取封面失败，请检查网络！',
       duration: 500
     });
+  }
+}
+
+export async function getProgress(itemId: string): Promise<Progress> {
+  const api: Axios = createApi()
+  let progress: Progress = {
+    id: '',
+    libraryItemId: itemId,
+    episodeId: '',
+    duration: 0,
+    progress: 0,
+    currentTime: 0,
+    isFinished: false,
+    hideFromContinueListening: false,
+    lastUpdate: 0,
+    startedAt: 0,
+    finishedAt: null
+  }
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/me/progress/${itemId}`)
+    progress = response.data
+    return progress
+  } catch (error) {
+    progress.libraryItemId = itemId
+    return progress
   }
 }

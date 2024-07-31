@@ -62,7 +62,6 @@ export function downloadCover(coverName: string, cover: ArrayBuffer) {
   let coverPath: string = filesDir + `/covers/${coverName}.jpg`
   let file = fs.openSync(coverPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE)
   fs.writeSync(file.fd, cover);
-  console.log("获取封面成功", `${coverName}.jpg`)
   fs.closeSync(file);
 }
 

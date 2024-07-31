@@ -135,7 +135,7 @@ export default struct Play {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
-        .width("100%")
+        .width("80%")
 
         Column() {
           Column() {

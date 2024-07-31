@@ -1,9 +1,10 @@
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { LibraryItem } from '../../api/Interface'
-import { getCover, getLibrarieItems } from '../../api/Api'
+import { LibraryItem, Progress } from '../../api/Interface'
+import { getCover, getLibrarieItems, getProgress } from '../../api/Api'
 import Loading from '../Loading'
+import { JSON } from '@kit.ArkTS';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -11,7 +12,6 @@ let filesDir = context.filesDir;
 @Component
 export default struct library {
   @State displayWidth: number = 0
-  @State progressValue: number = 100;
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
   @State libraryId: string = ''
@@ -19,6 +19,31 @@ export default struct library {
   @Consume itemTransfer: LibraryItem
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean
+  @Consume allProgress: Progress[]
+
+  getProgressById(itemId: string): Progress {
+    let progress: Progress = {
+      id: '',
+      libraryItemId: itemId,
+      episodeId: '',
+      duration: 0,
+      progress: 0,
+      currentTime: 0,
+      isFinished: false,
+      hideFromContinueListening: false,
+      lastUpdate: 0,
+      startedAt: 0,
+      finishedAt: null
+    }
+    for (let element of this.allProgress) {
+      if (element.libraryItemId === itemId) {
+        progress = element
+        progress.progress = Math.round(element.progress * 100) / 100
+        break
+      }
+    }
+    return progress
+  }
 
   async aboutToAppear() {
     this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
@@ -30,14 +55,16 @@ export default struct library {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
     this.showProgressTransfer = true
+    this.allProgress = []
     console.log("获取媒体库项目", this.libraryId)
     this.libraryItems = await getLibrarieItems(this.libraryId)
-
     await Promise.all(this.libraryItems.map(async (element) => {
       let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
       if (coverStatus === false) {
         try {
           await getCover(element.id)
+          let progress = await getProgress(element.id)
+          this.allProgress.push(progress)
         } catch (error) {
           console.error(JSON.stringify(error));
           console.log("获取封面失败。")
@@ -62,23 +89,25 @@ export default struct library {
                   .aspectRatio(1)
                   .borderRadius(10)
                   .objectFit(ImageFit.Fill)
-                  .onClick(() => {
+                  .onClick(async () => {
                     this.itemTransfer = this.libraryItems[index]
                     this.PageIndexTransfer = 3
                   })
                 Progress({
-                  value: this.progressValue,
+                  value: this.getProgressById(this.libraryItems[index].id).progress * 100,
                   total: 100,
                   type: ProgressType.Linear
                 })
                   .size({ width: '100%', height: 'auto' })
                   .style({ strokeWidth: 5 })
-                  .color(this.progressValue === 100 ? Color.Green : Color.Orange)
+                  .color(this.getProgressById(this.libraryItems[index].id).progress * 100 === 100 ? Color.Green :
+                  Color.Orange)
               }
               .width('100%')
               .borderRadius(10)
               .clip(true)
             }
+            .borderRadius(10)
           })
         }
         .columnsTemplate(this.columnsTemplate)

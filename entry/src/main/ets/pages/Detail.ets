@@ -1,8 +1,8 @@
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Chapter } from '../api/Interface'
-import { getItem } from '../api/Api'
+import { LibraryItem, Chapter, Progress } from '../api/Interface'
+import { getItem, getProgress } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -26,13 +26,51 @@ export default struct Detail {
   @Consume startPlayingTransfer: boolean
   @State coverWidth: string = "20%"
   @State descriptionLine: number = 0
+  @Consume allProgress: Progress[]
   @Consume itemTransfer: LibraryItem
   @Consume isPlayingTransfer: boolean
   @Consume nowPlayingItem: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
   @Consume showProgressTransfer: boolean
 
-  aboutToAppear() {
+  getProgressById(itemId: string): Progress {
+    let progress: Progress = {
+      id: '',
+      libraryItemId: itemId,
+      episodeId: '',
+      duration: 0,
+      progress: 0,
+      currentTime: 0,
+      isFinished: false,
+      hideFromContinueListening: false,
+      lastUpdate: 0,
+      startedAt: 0,
+      finishedAt: null
+    }
+    for (let element of this.allProgress) {
+      if (element.libraryItemId === itemId) {
+        progress = element
+        progress.progress = Math.round(element.progress * 100) / 100
+        break
+      }
+    }
+    return progress
+  }
+
+  getDuration(itemId: string): string {
+    let duration = ''
+    if (this.getProgressById(itemId).currentTime === 0) {
+      duration = "未听过"
+    } else if (this.getProgressById(itemId).isFinished === true) {
+      duration = "已听完"
+    } else {
+      duration =
+        "剩余 " + formatDuration(this.getProgressById(itemId).duration - this.getProgressById(itemId).currentTime)
+    }
+    return duration
+  }
+
+  async aboutToAppear() {
     this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = "80%"
@@ -41,7 +79,7 @@ export default struct Detail {
       this.coverWidth = "280"
       this.descriptionLine = 4
     } else if (this.displayWidth >= 840) {
-      this.coverWidth = "240"
+      this.coverWidth = "280"
       this.descriptionLine = 3
     }
   }
@@ -70,6 +108,7 @@ export default struct Detail {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
+      .width('80%')
 
       Column() {
         Column() {
@@ -129,11 +168,11 @@ export default struct Detail {
           .height('auto')
 
           Column() {
-            Text("你的进度：53%")
+            Text(`你的进度：${this.getProgressById(this.itemTransfer.id).progress * 100}%`)
               .fontSize(14)
               .fontColor(Color.White)
               .fontWeight(FontWeight.Bold)
-            Text("剩余 " + formatDuration(this.itemTransfer.media.duration))
+            Text(this.getDuration(this.itemTransfer.id))
               .fontSize(12)
               .fontColor('#8F9396')
           }
