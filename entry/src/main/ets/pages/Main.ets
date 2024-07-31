@@ -494,7 +494,8 @@ export default struct main {
 
         Column() {
           Row() {
-            Image(fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`))
+            Image(this.showProgressTransfer === false ?
+            fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
               .alt($rawfile('nocover.jpg'))
               .width(60)
               .aspectRatio(1)
@@ -583,7 +584,7 @@ export default struct main {
               this.startPlayingTransfer = false
             }, 500);
           })
-          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.4, 1) }))
+          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.6, 1) }))
         }
         .width('100%')
         .height('100%')

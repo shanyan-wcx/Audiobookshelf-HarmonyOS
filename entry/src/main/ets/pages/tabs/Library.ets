@@ -19,14 +19,6 @@ export default struct library {
   @Consume itemTransfer: LibraryItem
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean
-  private books: string[] =
-    ['Book 1', 'Book 2', 'Book 3', 'Book 4', 'Book 5', 'Book 6', 'Book 7', 'Book 8',
-      'Book 9', 'Book 10', 'Book 11', 'Book 12', 'Book 13'];
-  private covers: Resource[] =
-    [$rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'),
-      $rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'),
-      $rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'), $rawfile('nocover.jpg'),
-      $rawfile('nocover.jpg')];
 
   async aboutToAppear() {
     this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
@@ -41,7 +33,7 @@ export default struct library {
     console.log("获取媒体库项目", this.libraryId)
     this.libraryItems = await getLibrarieItems(this.libraryId)
 
-    this.libraryItems.forEach(async (element) => {
+    await Promise.all(this.libraryItems.map(async (element) => {
       let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
       if (coverStatus === false) {
         try {
@@ -51,7 +43,7 @@ export default struct library {
           console.log("获取封面失败。")
         }
       }
-    });
+    }));
     this.showProgressTransfer = false
   }
 
@@ -62,7 +54,9 @@ export default struct library {
           ForEach(this.libraryItems, (item: number, index) => {
             GridItem() {
               Stack({ alignContent: Alignment.Bottom }) {
-                Image(fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItems[index].id}.jpg`))
+                Image(this.showProgressTransfer === false ?
+                fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItems[index].id}.jpg`) :
+                $rawfile('nocover.jpg'))
                   .alt($rawfile('nocover.jpg'))
                   .width('100%')
                   .aspectRatio(1)

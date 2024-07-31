@@ -39,6 +39,7 @@ export default struct Play {
   @Consume itemTransfer: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
   @Consume nowPlayingItem: LibraryItem
+  @Consume showProgressTransfer: boolean
 
   @Builder
   bindMenuBuilder() {
@@ -112,7 +113,8 @@ export default struct Play {
         .width("100%")
         .justifyContent(FlexAlign.SpaceBetween)
 
-        Image(fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`))
+        Image(this.showProgressTransfer === false ?
+        fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
           .alt($rawfile('nocover.jpg'))
           .width(this.coverWidth)
           .aspectRatio(1)

@@ -30,6 +30,7 @@ export default struct Detail {
   @Consume isPlayingTransfer: boolean
   @Consume nowPlayingItem: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
+  @Consume showProgressTransfer: boolean
 
   aboutToAppear() {
     this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
@@ -47,7 +48,8 @@ export default struct Detail {
 
   build() {
     Column() {
-      Image(fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`))
+      Image(this.showProgressTransfer === false ?
+      fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
         .alt($rawfile('nocover.jpg'))
         .width(this.coverWidth)
         .aspectRatio(1)
