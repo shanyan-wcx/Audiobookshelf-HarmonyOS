@@ -14,8 +14,8 @@ export default struct library {
   @State progressValue: number = 100;
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
-  libraryId: string = ''
-  @State libraryItems: LibraryItem[] = []
+  @State libraryId: string = ''
+  @Consume libraryItems: LibraryItem[]
   @Consume itemTransfer: LibraryItem
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean

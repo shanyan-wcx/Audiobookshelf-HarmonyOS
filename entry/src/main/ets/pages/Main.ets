@@ -1,9 +1,9 @@
 import window from '@ohos.window';
 import { router, promptAction, display, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileUri } from '@kit.CoreFileKit';
+import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import library from './tabs/Library'
-import { getLogout, getLibraries } from '../api/Api'
+import { getLogout, getLibraries, getLibrarieItems, getCover } from '../api/Api'
 import { Library, LibraryItem, Chapter } from '../api/Interface'
 import Detail from './Detail'
 import Play from './Play'
@@ -37,6 +37,7 @@ export default struct main {
   @State showPlay: boolean = false;
   @Provide @Watch('changePage') showPlayTransfer: boolean = this.showPlay;
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
+  @Provide libraryItems: LibraryItem[] = []
   private controller: TabsController = new TabsController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
@@ -116,13 +117,33 @@ export default struct main {
     Menu() {
       ForEach(libraries, (item: number, index) => {
         MenuItem({ content: libraries[index].name })
-          .onClick(() => {
+          .onClick(async () => {
             if (this.selectedLibrary !== libraries[index].name) {
               this.selectedLibrary = libraries[index].name
               this.selectedLibraryId = libraries[index].id
               this.selectedLibraryIndex = index
               this.pageIndex = 0
               this.PageIndexTransfer = 0
+
+
+              this.showProgressTransfer = true
+              console.log("获取媒体库项目", this.selectedLibraryId)
+              this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
+
+              await Promise.all(this.libraryItems.map(async (element) => {
+                let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+                if (coverStatus === false) {
+                  try {
+                    await getCover(element.id)
+                  } catch (error) {
+                    console.error(JSON.stringify(error));
+                    console.log("获取封面失败。")
+                  }
+                }
+              }));
+              this.showProgressTransfer = false
+
+
             }
           })
           .width('auto')

@@ -55,7 +55,10 @@ export async function getLibraries(): Promise<Library[]> {
   try {
     const response: AxiosResponse = await api.get<string, AxiosResponse<string>, null>('/api/libraries')
     console.log("获取媒体库成功！")
-    library = response.data.libraries
+
+    library = response.data.libraries.filter((item: Library) => {
+      return item.mediaType === "book";
+    });
     library.forEach(element => {
       libraryNames.push(element.name)
     });
@@ -97,7 +100,7 @@ export async function getLibrarieItems(libraryId: string): Promise<LibraryItem[]
   }
 }
 
-export async function getItem(itemId: string): Promise<Chapter[]>{
+export async function getItem(itemId: string): Promise<Chapter[]> {
   const api: Axios = createApi()
   let chapters: string[] = []
   try {

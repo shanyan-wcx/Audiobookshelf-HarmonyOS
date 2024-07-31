@@ -179,7 +179,7 @@ export default struct Detail {
                 .width('auto')
                 .height('auto')
                 .textAlign(TextAlign.Start)
-              Text(this.itemTransfer.media.duration.toString())
+              Text(formatDuration(this.itemTransfer.media.duration))
                 .fontSize(14)
                 .fontColor(Color.White)
                 .width('100%')
