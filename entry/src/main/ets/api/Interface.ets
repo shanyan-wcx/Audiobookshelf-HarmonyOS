@@ -62,16 +62,74 @@ export interface Metadata {
   abridged: boolean;
 }
 
+export interface AudioFileMetadata {
+  filename: string;
+  ext: string;
+  path: string;
+  relPath: string;
+  size: number;
+  mtimeMs: number;
+  ctimeMs: number;
+  birthtimeMs: number;
+}
+
+export interface AudioFile {
+  index: number;
+  ino: string;
+  metadata: AudioFileMetadata;
+  addedAt: number;
+  updatedAt: number;
+  trackNumFromMeta: number | null;
+  discNumFromMeta: number | null;
+  trackNumFromFilename: number;
+  discNumFromFilename: number | null;
+  manuallyVerified: boolean;
+  exclude: boolean;
+  error: string | null;
+  format: string;
+  duration: number;
+  bitRate: number;
+  language: string;
+  codec: string;
+  timeBase: string;
+  channels: number;
+  channelLayout: string;
+  chapters: string[];
+  embeddedCoverArt: string | null;
+  metaTags: Record<string, string>;
+  mimeType: string;
+}
+
+export interface Chapter {
+  id: number;
+  start: number;
+  end: number;
+  title: string;
+}
+
+export interface Track {
+  index: number;
+  startOffset: number;
+  duration: number;
+  title: string;
+  contentUrl: string;
+  mimeType: string;
+  codec: string;
+  metadata: AudioFileMetadata;
+}
+
 export interface Media {
   id: string;
+  libraryItemId: string;
   metadata: Metadata;
   coverPath: string;
   tags: string[];
-  numTracks: number;
-  numAudioFiles: number;
-  numChapters: number;
+  audioFiles: AudioFile[];
+  chapters: Chapter[];
   duration: number;
   size: number;
+  tracks: Track[];
+  ebookFile: string | null;
 }
 
 export interface LibraryItem {
@@ -96,13 +154,6 @@ export interface LibraryItem {
   size: number;
 }
 
-export interface Chapter {
-  id: number;
-  start: number;
-  end: number;
-  title: string;
-}
-
 export interface Progress {
   id: string;
   libraryItemId: string;
@@ -115,4 +166,47 @@ export interface Progress {
   lastUpdate: number;
   startedAt: number;
   finishedAt: number | null;
+}
+
+export interface PlayItem {
+  id: string;
+  userId: string;
+  libraryId: string;
+  libraryItemId: string;
+  bookId: string;
+  episodeId: string | null;
+  mediaType: string;
+  metadata: Metadata;
+  chapters: Chapter[];
+  displayTitle: string;
+  displayAuthor: string;
+  coverPath: string;
+  duration: number;
+  playMethod: number;
+  mediaPlayer: string;
+  deviceInfo: DeviceInfo;
+  serverVersion: string;
+  date: string;
+  dayOfWeek: string;
+  timeListening: number;
+  startTime: number;
+  currentTime: number;
+  startedAt: number;
+  updatedAt: number;
+  audioTracks: Track[];
+  videoTrack: string | null;
+}
+
+export interface DeviceInfo {
+  id: string;
+  userId: string;
+  deviceId: string;
+  ipAddress: string;
+  clientVersion: string;
+  clientName: string;
+}
+
+export interface PlayData {
+  deviceInfo: DeviceInfo,
+  forceDirectPlay: boolean
 }

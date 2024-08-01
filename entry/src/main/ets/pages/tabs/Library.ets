@@ -14,6 +14,7 @@ export default struct library {
   @State displayWidth: number = 0
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
+  @Consume nowPlayTime: number
   @State libraryId: string = ''
   @Consume libraryItems: LibraryItem[]
   @Consume itemTransfer: LibraryItem

@@ -1,11 +1,12 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
-import { LoginInfo, User, Library, LibraryItem, Chapter, Progress } from './Interface'
+import { LoginInfo, User, Library, LibraryItem, Chapter, Progress, PlayItem, DeviceInfo, PlayData } from './Interface'
 import { downloadCover } from '../util/fs'
 
 axios.defaults.headers.post['Content-Type'] = 'application/json'
 
 let authToken: string = ""
+let userId: string = ""
 let baseUrl = ""
 
 function createApi() {
@@ -30,6 +31,7 @@ export async function getLogin(loginInfo: LoginInfo) {
     })
     console.log("Token:", JSON.stringify(response.data.user.token));
     authToken = response.data.user.token
+    userId = response.data.user.id
     return true
   } catch (error) {
     console.error(JSON.stringify(error));
@@ -212,4 +214,85 @@ export async function getProgress(itemId: string): Promise<Progress> {
     progress.libraryItemId = itemId
     return progress
   }
+}
+
+export async function getPlayItem(itemId: string): Promise<PlayItem> {
+  const api: Axios = createApi();
+  let playItem: PlayItem = {
+    id: '',
+    userId: '',
+    libraryId: '',
+    libraryItemId: itemId,
+    bookId: '',
+    episodeId: null,
+    mediaType: '',
+    metadata: {
+      title: '',
+      titleIgnorePrefix: '',
+      subtitle: null,
+      authorName: '',
+      authorNameLF: '',
+      narratorName: '',
+      seriesName: '',
+      genres: [],
+      publishedYear: '',
+      publishedDate: null,
+      publisher: null,
+      description: '',
+      isbn: null,
+      asin: null,
+      language: '',
+      explicit: false,
+      abridged: false,
+    },
+    chapters: [],
+    displayTitle: '',
+    displayAuthor: '',
+    coverPath: '',
+    duration: 0,
+    playMethod: 0,
+    mediaPlayer: '',
+    deviceInfo: {
+      id: '',
+      userId: '',
+      deviceId: '',
+      ipAddress: '',
+      clientVersion: '',
+      clientName: '',
+    },
+    serverVersion: '',
+    date: '',
+    dayOfWeek: '',
+    timeListening: 0,
+    startTime: 0,
+    currentTime: 0,
+    startedAt: 0,
+    updatedAt: 0,
+    audioTracks: [],
+    videoTrack: null
+  }
+  try {
+    const response: AxiosResponse =
+      await api.post<string, AxiosResponse<string>, PlayData>(`/api/items/${itemId}/play`, {
+        deviceInfo: {
+          id: '00000000',
+          userId: userId,
+          deviceId: '00000000',
+          ipAddress: '',
+          clientName: 'Abs-HarmonyOS',
+          clientVersion: "0.0.1"
+        },
+        forceDirectPlay: true
+      })
+    playItem = response.data
+    console.log("获取到播放项目", playItem.libraryItemId)
+    console.log("当前位置", playItem.currentTime)
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取播放项目失败，请检查网络！',
+      duration: 500
+    });
+  }
+  return playItem
 }

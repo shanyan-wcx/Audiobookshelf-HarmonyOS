@@ -1,8 +1,9 @@
 import { display } from '@kit.ArkUI';
+import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Chapter, Progress } from '../api/Interface'
-import { getItem, getProgress } from '../api/Api'
+import { LibraryItem, Chapter, Progress, PlayItem } from '../api/Interface'
+import { getItem, getPlayItem } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -26,12 +27,31 @@ export default struct Detail {
   @Consume startPlayingTransfer: boolean
   @State coverWidth: string = "20%"
   @State descriptionLine: number = 0
+  @Consume nowPlayTime: number
   @Consume allProgress: Progress[]
   @Consume itemTransfer: LibraryItem
   @Consume isPlayingTransfer: boolean
   @Consume nowPlayingItem: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
   @Consume showProgressTransfer: boolean
+  @Consume avPlayer: media.AVPlayer | null
+  @Consume server: string
+
+  async getPlayContent(playItem: PlayItem): Promise<string> {
+    let index: number = 0
+    for (let track of playItem.audioTracks) {
+      if (track.startOffset > playItem.currentTime) {
+        index = track.index - 2
+        console.log("找到当前音轨序号为" + index + "，起始位置为" + playItem.audioTracks[index].startOffset)
+        break
+      }
+    }
+    let url: string = this.server + playItem.audioTracks[index].contentUrl
+    console.log("找到音频Url为", url)
+    this.nowPlayTime = playItem.currentTime - playItem.audioTracks[index].startOffset
+    console.log("起始位置为", formatDuration(this.nowPlayTime))
+    return url
+  }
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -126,9 +146,22 @@ export default struct Detail {
             .layoutWeight(1)
             .onClick(async () => {
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
+              this.nowPlayingItem = this.itemTransfer
+              let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
+              if (this.avPlayer!.state !== 'idle') {
+                this.avPlayer!.reset()
+              }
+              console.log("播放器重置。")
+              let url: string = await this.getPlayContent(playItem)
+              this.avPlayer!.url = url
+              this.avPlayer!.prepare()
+              console.log("播放器准备。")
+              this.avPlayer!.seek(this.nowPlayTime)
+              console.log("播放器跳转到当前位置。")
+              this.avPlayer!.play()
+              console.log("播放器开始播放。")
               this.startPlayingTransfer = true
               this.isPlayingTransfer = true
-              this.nowPlayingItem = this.itemTransfer
             })
 
             Button({ type: ButtonType.Normal }) {

@@ -1,5 +1,6 @@
 import window from '@ohos.window';
 import { display } from '@kit.ArkUI';
+import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Chapter } from '../api/Interface'
@@ -33,6 +34,7 @@ export default struct Play {
   @State coverWidth: string = "20%"
   @State showChapters: boolean = false
   @State showMenu: boolean = false
+  @Consume nowPlayTime: number
   @Consume showPlayTransfer: boolean
   @Consume isPlayingTransfer: boolean
   @Consume startPlayingTransfer: boolean
@@ -40,6 +42,7 @@ export default struct Play {
   @Consume nowPlayingChapters: Chapter[]
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean
+  @Consume avPlayer: media.AVPlayer | null
 
   @Builder
   bindMenuBuilder() {
@@ -198,6 +201,13 @@ export default struct Play {
             .backgroundColor('#383838')
             .onClick(() => {
               this.isPlayingTransfer = !this.isPlayingTransfer
+              if (this.isPlayingTransfer === false) {
+                this.avPlayer!.pause()
+                console.log("播放器暂停。")
+              } else {
+                this.avPlayer!.play()
+                console.log("播放器播放。")
+              }
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -303,6 +313,10 @@ export default struct Play {
               this.startPlayingTransfer = false
               this.isPlayingTransfer = false
               this.showPlayTransfer = false
+              this.avPlayer!.stop()
+              console.log("播放器关闭。")
+              this.avPlayer!.reset()
+              console.log("播放器重置。")
             })
         }
         .width('80%')

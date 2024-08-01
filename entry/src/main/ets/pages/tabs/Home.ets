@@ -17,6 +17,7 @@ export default struct home {
   @State libraryId: string = ''
   @State libraryItemsInProgress: LibraryItem[] = []
   @State libraryItemsFinished: LibraryItem[] = []
+  @Consume nowPlayTime: number
   @Consume itemTransfer: LibraryItem
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean

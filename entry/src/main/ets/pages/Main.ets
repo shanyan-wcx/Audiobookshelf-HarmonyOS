@@ -1,4 +1,5 @@
 import window from '@ohos.window';
+import { media } from '@kit.MediaKit';
 import { router, promptAction, display, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
@@ -33,6 +34,8 @@ export default struct main {
   @State selectedLibraryIndex: number = 0;
   @State shadowRadius: number = 0;
   @State isPlaying: boolean = true
+  @Provide avPlayer: media.AVPlayer | null = null
+  @Provide nowPlayTime: number = 0
   @Provide @Watch('changePage') isPlayingTransfer: boolean = this.isPlaying
   @State startPlaying: boolean = false
   @State showPlay: boolean = false;
@@ -43,6 +46,7 @@ export default struct main {
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
   @Provide allProgress: Progress[] = []
+  @Provide server: string = this.params.server
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -62,6 +66,7 @@ export default struct main {
     mediaType: '',
     media: {
       id: '',
+      libraryItemId: '',
       metadata: {
         title: '',
         titleIgnorePrefix: '',
@@ -79,15 +84,16 @@ export default struct main {
         asin: null,
         language: '',
         explicit: false,
-        abridged: false
+        abridged: false,
       },
       coverPath: '',
       tags: [],
-      numTracks: 0,
-      numAudioFiles: 0,
-      numChapters: 0,
+      audioFiles: [],
+      chapters: [],
       duration: 0,
       size: 0,
+      tracks: [],
+      ebookFile: null
     },
     numFiles: 0,
     size: 0
@@ -276,6 +282,7 @@ export default struct main {
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
     this.showProgressTransfer = false
+    this.avPlayer = await media.createAVPlayer();
   }
 
   build() {
@@ -574,6 +581,13 @@ export default struct main {
             .onClick(() => {
               this.isPlaying = !this.isPlaying
               this.isPlayingTransfer = this.isPlaying
+              if (this.isPlaying === false) {
+                this.avPlayer!.pause()
+                console.log("播放器暂停。")
+              } else {
+                this.avPlayer!.play()
+                console.log("播放器播放。")
+              }
             })
 
             Button({ type: ButtonType.Circle }) {
