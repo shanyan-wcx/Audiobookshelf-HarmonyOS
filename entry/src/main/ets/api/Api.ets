@@ -1,6 +1,17 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
-import { LoginInfo, User, Library, LibraryItem, Chapter, Progress, PlayItem, DeviceInfo, PlayData } from './Interface'
+import {
+  LoginInfo,
+  User,
+  Library,
+  LibraryItem,
+  Chapter,
+  Progress,
+  PlayItem,
+  DeviceInfo,
+  PlayData,
+  UpdateProgress
+} from './Interface'
 import { downloadCover } from '../util/fs'
 
 axios.defaults.headers.post['Content-Type'] = 'application/json'
@@ -18,7 +29,7 @@ function createApi() {
   return api
 }
 
-export async function getLogin(loginInfo: LoginInfo) {
+export async function getLogin(loginInfo: LoginInfo): Promise<string | null> {
   let user: User = {
     username: loginInfo.username,
     password: loginInfo.password
@@ -32,17 +43,19 @@ export async function getLogin(loginInfo: LoginInfo) {
     console.log("Token:", JSON.stringify(response.data.user.token));
     authToken = response.data.user.token
     userId = response.data.user.id
-    return true
+    return authToken
   } catch (error) {
     console.error(JSON.stringify(error));
-    return false
+    return null
   }
 }
 
 export async function getLogout() {
   const api: Axios = createApi()
   try {
-    const response: AxiosResponse = await api.post<string, AxiosResponse<string>, User>('/logout')
+    const response: AxiosResponse = await api.post<string, AxiosResponse<string>>('/logout', {
+      timeout: 10000
+    })
     console.log("退出登录！")
   } catch (error) {
     console.error(JSON.stringify(error));
@@ -54,7 +67,9 @@ export async function getLibraries(): Promise<Library[]> {
   let libraryNames: string[] = []
   const api: Axios = createApi()
   try {
-    const response: AxiosResponse = await api.get<string, AxiosResponse<string>, null>('/api/libraries')
+    const response: AxiosResponse = await api.get<string, AxiosResponse<string>, null>('/api/libraries', {
+      timeout: 10000
+    })
     console.log("获取媒体库成功！")
 
     library = response.data.libraries.filter((item: Library) => {
@@ -81,8 +96,10 @@ export async function getLibrarieItems(libraryId: string): Promise<LibraryItem[]
   let itemTitles: string[] = []
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items`,
-        { params: { minified: true } })
+      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items`, {
+        params: { minified: true },
+        timeout: 10000
+      })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
     });
@@ -108,7 +125,10 @@ export async function getLibrarieItemsInProgress(libraryId: string): Promise<Lib
   try {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.aW4tcHJvZ3Jlc3M%3D`,
-        { params: { minified: true } })
+        {
+          params: { minified: true },
+          timeout: 10000
+        })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
     });
@@ -134,7 +154,10 @@ export async function getLibrarieItemsFinished(libraryId: string): Promise<Libra
   try {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.ZmluaXNoZWQ%3D`,
-        { params: { minified: true } })
+        {
+          params: { minified: true },
+          timeout: 10000
+        })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
     });
@@ -158,7 +181,9 @@ export async function getItem(itemId: string): Promise<Chapter[]> {
   let chapters: string[] = []
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}`)
+      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}`, {
+        timeout: 10000
+      })
     response.data.media.chapters.forEach((element: Chapter) => {
       chapters.push(element.title)
     });
@@ -179,7 +204,10 @@ export async function getCover(itemId: string) {
   try {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover?format=jpeg`,
-        { params: { responseType: 'arraybuffer' } })
+        {
+          params: { responseType: 'arraybuffer' },
+          timeout: 10000
+        })
     downloadCover(itemId, response.data)
   } catch (error) {
     console.error(JSON.stringify(error));
@@ -207,7 +235,9 @@ export async function getProgress(itemId: string): Promise<Progress> {
   }
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/me/progress/${itemId}`)
+      await api.get<string, AxiosResponse<string>, null>(`/api/me/progress/${itemId}`, {
+        timeout: 10000
+      })
     progress = response.data
     return progress
   } catch (error) {
@@ -283,6 +313,8 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
           clientVersion: "0.0.1"
         },
         forceDirectPlay: true
+      }, {
+        timeout: 10000
       })
     playItem = response.data
     console.log("获取到播放项目", playItem.libraryItemId)
@@ -295,4 +327,20 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
     });
   }
   return playItem
+}
+
+export async function updateProgress(itemId: string, progress: UpdateProgress) {
+  const api: Axios = createApi();
+  try {
+    const response: AxiosResponse =
+      await api.patch<string, AxiosResponse<string>, UpdateProgress>(`/api/me/progress/${itemId}`, progress, {
+        timeout: 10000
+      })
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '上传进度失败，请检查网络！',
+      duration: 500
+    });
+  }
 }

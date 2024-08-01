@@ -44,6 +44,9 @@ export default struct Play {
   @Consume showProgressTransfer: boolean
   @Consume avPlayer: media.AVPlayer | null
   @Consume playTitle: string
+  @Consume nowPlayingDuration: number
+  @Consume nowPlayedTime: number
+  @Consume nowPlayedProgress: number
 
   @Builder
   bindMenuBuilder() {
@@ -144,10 +147,10 @@ export default struct Play {
         Column() {
           Column() {
             Row() {
-              Text("05:04")
+              Text(formatDuration(this.nowPlayingDuration))
                 .fontSize(16)
                 .fontColor(Color.White)
-              Text("-02:18")
+              Text("-" + formatDuration(this.nowPlayingDuration - this.nowPlayedTime))
                 .fontSize(16)
                 .fontColor(Color.White)
             }
@@ -155,7 +158,7 @@ export default struct Play {
             .justifyContent(FlexAlign.SpaceBetween)
 
             Progress({
-              value: 50,
+              value: this.nowPlayedProgress,
               total: 100,
               type: ProgressType.Linear
             })
@@ -204,10 +207,8 @@ export default struct Play {
               this.isPlayingTransfer = !this.isPlayingTransfer
               if (this.isPlayingTransfer === false) {
                 this.avPlayer!.pause()
-                console.log("播放器暂停。")
               } else {
                 this.avPlayer!.play()
-                console.log("播放器播放。")
               }
             })
 
@@ -315,9 +316,6 @@ export default struct Play {
               this.isPlayingTransfer = false
               this.showPlayTransfer = false
               this.avPlayer!.stop()
-              console.log("播放器关闭。")
-              this.avPlayer!.reset()
-              console.log("播放器重置。")
             })
         }
         .width('80%')

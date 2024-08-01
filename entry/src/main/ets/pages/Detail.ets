@@ -2,8 +2,9 @@ import { display } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Chapter, Progress, PlayItem } from '../api/Interface'
-import { getItem, getPlayItem } from '../api/Api'
+import { BusinessError } from '@kit.BasicServicesKit';
+import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress } from '../api/Interface'
+import { getItem, getPlayItem, updateProgress } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -37,9 +38,94 @@ export default struct Detail {
   @Consume avPlayer: media.AVPlayer | null
   @Consume playTitle: string
   @Consume server: string
+  @State apitoken: string | null = null
+  @State currentTime: number = 0
+  @Consume nowPlayingTracks: Track[]
+  @Consume nowPlayingIndex: number
+  @Consume nowPlayingDuration: number
+  @Consume nowPlayedTime: number
+  @Consume nowPlayedProgress: number
+  @Consume nowTrackStartTime: number
+
+  setAVPlayerCallback(avPlayer: media.AVPlayer) {
+    avPlayer.on('durationUpdate', (duration: number) => {
+      this.nowPlayingDuration = duration / 1000
+    })
+    avPlayer.on('timeUpdate', async (time: number) => {
+      this.nowPlayedTime = time / 1000
+      this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+      if (this.nowPlayedTime % 10 === 0) {
+        console.log("开始上传进度")
+        for (let element of this.allProgress) {
+          if (element.libraryItemId === this.nowPlayingItem.id) {
+            let upProgress: UpdateProgress = {
+              currentTime: this.nowTrackStartTime + time / 1000,
+              progress: element.currentTime / element.duration,
+              isFinished: false
+            }
+            console.log("当前时间", element.currentTime)
+            console.log("当前进度", element.currentTime)
+            await updateProgress(this.nowPlayingItem.id, upProgress)
+            break
+          }
+        }
+        console.log("上传进度完毕")
+      }
+    })
+    avPlayer.on('seekDone', (seekDoneTime: number) => {
+      console.info(`播放器跳转成功，当前时间为 ${seekDoneTime}`);
+    })
+    avPlayer.on('error', (err: BusinessError) => {
+      console.error(`播放器出现错误，code is ${err.code}, message is ${err.message}`);
+      avPlayer.reset();
+    })
+    avPlayer.on('stateChange', async (state: string, reason: media.StateChangeReason) => {
+      switch (state) {
+        case 'idle':
+          console.info('播放器重置。');
+          break;
+        case 'initialized':
+          console.info('播放器初始化。');
+          avPlayer.prepare();
+          break;
+        case 'prepared':
+          console.info('播放器就绪。');
+          avPlayer.seek(this.currentTime)
+          avPlayer.play()
+          break;
+        case 'playing':
+          console.info('播放器开始播放。');
+          break;
+        case 'paused':
+          console.info('播放器暂停。');
+          break;
+        case 'completed':
+          console.info('播放完毕。');
+          await avPlayer.reset();
+          this.nowPlayingIndex++
+          this.playTitle = this.nowPlayingTracks[this.nowPlayingIndex].title
+          avPlayer.url =
+            this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+          this.currentTime = 0
+          avPlayer.prepare()
+          break;
+        case 'stopped':
+          console.info('播放器停止。');
+          await avPlayer.reset();
+          break;
+        case 'released':
+          console.info('播放器释放。');
+          break;
+        default:
+          console.info('播放器状态未知。');
+          break;
+      }
+    })
+  }
 
   async getPlayContent(playItem: PlayItem): Promise<string> {
     let index: number = 0
+    this.nowPlayingTracks = playItem.audioTracks
     for (let track of playItem.audioTracks) {
       if (track.startOffset > playItem.currentTime) {
         index = track.index - 2
@@ -47,9 +133,11 @@ export default struct Detail {
         break
       }
     }
-    let url: string = this.server + playItem.audioTracks[index].contentUrl
+    let url: string = this.server + playItem.audioTracks[index].contentUrl + "?token=" + this.apitoken
     this.playTitle = playItem.chapters[index].title
+    this.nowTrackStartTime = playItem.audioTracks[index].startOffset
     console.log("找到音频Url为", url)
+    this.nowPlayingIndex = index
     this.nowPlayTime = playItem.currentTime - playItem.audioTracks[index].startOffset
     console.log("起始位置为", formatDuration(this.nowPlayTime))
     return url
@@ -147,21 +235,15 @@ export default struct Detail {
             .height(40)
             .layoutWeight(1)
             .onClick(async () => {
+              this.avPlayer!.reset()
+              this.setAVPlayerCallback(this.avPlayer!);
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.nowPlayingItem = this.itemTransfer
               let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
-              if (this.avPlayer!.state !== 'idle') {
-                this.avPlayer!.reset()
-              }
-              console.log("播放器重置。")
+              this.currentTime = playItem.currentTime
               let url: string = await this.getPlayContent(playItem)
               this.avPlayer!.url = url
-              this.avPlayer!.prepare()
-              console.log("播放器准备。")
-              this.avPlayer!.seek(this.nowPlayTime)
-              console.log("播放器跳转到当前位置。")
-              this.avPlayer!.play()
-              console.log("播放器开始播放。")
+              this.avPlayer!.play();
               this.startPlayingTransfer = true
               this.isPlayingTransfer = true
             })

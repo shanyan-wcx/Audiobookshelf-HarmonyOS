@@ -4,7 +4,7 @@ import { router, promptAction, display, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { getLogout, getLibraries, getLibrarieItems, getCover, getProgress } from '../api/Api'
-import { Library, LibraryItem, Chapter, Progress } from '../api/Interface'
+import { Library, LibraryItem, Chapter, Progress, Track } from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
 import Detail from './Detail'
@@ -18,6 +18,7 @@ let libraries: Library[] = []
 class RouTmp {
   server: string = ''
   username: string = ''
+  apitoken: string | null = null
 }
 
 @Entry
@@ -48,6 +49,12 @@ export default struct main {
   @Provide allProgress: Progress[] = []
   @Provide server: string = this.params.server
   @Provide playTitle: string = ''
+  @Provide nowPlayingTracks: Track[] = []
+  @Provide nowPlayingIndex: number = 0
+  @Provide nowPlayingDuration: number = 0
+  @Provide nowPlayedTime: number = 0
+  @Provide nowPlayedProgress: number = 0
+  @Provide nowTrackStartTime: number = 0
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -496,12 +503,15 @@ export default struct main {
           .visibility(this.pageIndex === 2 ? Visibility.Visible : Visibility.None)
 
           Column() {
-            Detail()
+            Detail({
+              apitoken: this.params.apitoken
+            })
           }
           .backgroundColor("#333333")
           .width("100%")
           .height('100%')
           .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+
           // .transition(TransitionEffect.opacity(0).animation({ curve: curves.springMotion(0.6, 1) }))
         }
         .mode(NavigationMode.Stack)
@@ -584,10 +594,8 @@ export default struct main {
               this.isPlayingTransfer = this.isPlaying
               if (this.isPlaying === false) {
                 this.avPlayer!.pause()
-                console.log("播放器暂停。")
               } else {
                 this.avPlayer!.play()
-                console.log("播放器播放。")
               }
             })
 

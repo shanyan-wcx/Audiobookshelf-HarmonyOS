@@ -20,7 +20,7 @@ class RouTmp {
 @Entry
 @Component
 export default struct login {
-  @State loginState: boolean = false
+  @State apitoken: string | null = null
   @State statusBarHeight: number = 0
   @State showProgress: boolean = false
   private params: RouTmp = router.getParams() as RouTmp
@@ -38,8 +38,8 @@ export default struct login {
         this.loginInfo.server = config.loginInfo.server
         this.loginInfo.username = config.loginInfo.username
         this.loginInfo.password = config.loginInfo.password
-        this.loginState = await getLogin(this.loginInfo)
-        if (this.loginState) {
+        this.apitoken = await getLogin(this.loginInfo)
+        if (this.apitoken !== null) {
           console.info("登陆成功！")
           promptAction.showToast({
             message: '登陆成功！',
@@ -49,7 +49,8 @@ export default struct login {
             url: 'pages/Main',
             params: {
               server: this.loginInfo.server,
-              username: this.loginInfo.username
+              username: this.loginInfo.username,
+              apitoken: this.apitoken
             }
           })
         } else {
@@ -199,8 +200,8 @@ export default struct login {
             .backgroundColor('#aabbcc')
             .onClick(async () => {
               this.showProgress = true
-              this.loginState = await getLogin(this.loginInfo)
-              if (this.loginState) {
+              this.apitoken = await getLogin(this.loginInfo)
+              if (this.apitoken !== null) {
                 writeConfig(config)
                 this.showProgress = false
                 console.info("登陆成功！")
@@ -212,7 +213,8 @@ export default struct login {
                   url: 'pages/Main',
                   params: {
                     server: this.loginInfo.server,
-                    username: this.loginInfo.username
+                    username: this.loginInfo.username,
+                    apitoken: this.apitoken
                   }
                 })
               } else {

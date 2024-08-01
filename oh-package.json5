@@ -2,7 +2,8 @@
   "modelVersion": "5.0.0",
   "description": "Please describe the basic information.",
   "dependencies": {
-    "@ohos/axios": "^2.2.2"
+    "@ohos/axios": "^2.2.2",
+    "@yyz116/engine.io-client": "^1.0.0"
   },
   "devDependencies": {
     "@ohos/hypium": "1.0.18",

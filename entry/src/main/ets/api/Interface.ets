@@ -168,6 +168,12 @@ export interface Progress {
   finishedAt: number | null;
 }
 
+export interface UpdateProgress {
+  progress: number;
+  currentTime: number;
+  isFinished: boolean;
+}
+
 export interface PlayItem {
   id: string;
   userId: string;
