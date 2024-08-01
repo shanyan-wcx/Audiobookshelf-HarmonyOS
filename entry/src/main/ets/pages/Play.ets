@@ -43,6 +43,7 @@ export default struct Play {
   @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean
   @Consume avPlayer: media.AVPlayer | null
+  @Consume playTitle: string
 
   @Builder
   bindMenuBuilder() {
@@ -125,7 +126,7 @@ export default struct Play {
           .objectFit(ImageFit.Fill)
           .margin({ top: 20 })
         Column() {
-          Text(this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : "")
+          Text(this.playTitle)
             .fontSize(28)
             .fontColor(Color.White)
             .fontWeight(FontWeight.Bold)

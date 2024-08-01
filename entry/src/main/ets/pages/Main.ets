@@ -47,6 +47,7 @@ export default struct main {
   @Provide pageStack: NavPathStack = new NavPathStack()
   @Provide allProgress: Progress[] = []
   @Provide server: string = this.params.server
+  @Provide playTitle: string = ''
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -535,7 +536,7 @@ export default struct main {
               Marquee({
                 start: true,
                 step: 3,
-                src: this.nowPlayingChapters.length > 0 ? this.nowPlayingChapters[0].title : ""
+                src: this.playTitle
               })
                 .fontColor(Color.White)
                 .fontSize(18)

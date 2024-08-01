@@ -35,6 +35,7 @@ export default struct Detail {
   @Consume nowPlayingChapters: Chapter[]
   @Consume showProgressTransfer: boolean
   @Consume avPlayer: media.AVPlayer | null
+  @Consume playTitle: string
   @Consume server: string
 
   async getPlayContent(playItem: PlayItem): Promise<string> {
@@ -47,6 +48,7 @@ export default struct Detail {
       }
     }
     let url: string = this.server + playItem.audioTracks[index].contentUrl
+    this.playTitle = playItem.audioTracks[index].title
     console.log("找到音频Url为", url)
     this.nowPlayTime = playItem.currentTime - playItem.audioTracks[index].startOffset
     console.log("起始位置为", formatDuration(this.nowPlayTime))
