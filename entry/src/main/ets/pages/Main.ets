@@ -502,7 +502,7 @@ export default struct main {
           .width("100%")
           .height('100%')
           .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
-          .transition(TransitionEffect.opacity(0).animation({ curve: curves.springMotion(0.6, 1) }))
+          // .transition(TransitionEffect.opacity(0).animation({ curve: curves.springMotion(0.6, 1) }))
         }
         .mode(NavigationMode.Stack)
         .padding({ top: this.statusBarHeight })

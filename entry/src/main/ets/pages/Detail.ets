@@ -48,7 +48,7 @@ export default struct Detail {
       }
     }
     let url: string = this.server + playItem.audioTracks[index].contentUrl
-    this.playTitle = playItem.audioTracks[index].title
+    this.playTitle = playItem.chapters[index].title
     console.log("找到音频Url为", url)
     this.nowPlayTime = playItem.currentTime - playItem.audioTracks[index].startOffset
     console.log("起始位置为", formatDuration(this.nowPlayTime))
