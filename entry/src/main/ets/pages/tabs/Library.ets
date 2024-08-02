@@ -14,7 +14,6 @@ export default struct library {
   @State displayWidth: number = 0
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
-  @Consume nowPlayTime: number
   @State libraryId: string = ''
   @Consume libraryItems: LibraryItem[]
   @Consume itemTransfer: LibraryItem
@@ -55,24 +54,24 @@ export default struct library {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
-    this.showProgressTransfer = true
-    this.allProgress = []
-    console.log("获取媒体库项目", this.libraryId)
-    this.libraryItems = await getLibrarieItems(this.libraryId)
-    await Promise.all(this.libraryItems.map(async (element) => {
-      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-      if (coverStatus === false) {
-        try {
-          await getCover(element.id)
-          let progress = await getProgress(element.id)
-          this.allProgress.push(progress)
-        } catch (error) {
-          console.error(JSON.stringify(error));
-          console.log("获取封面失败。")
-        }
-      }
-    }));
-    this.showProgressTransfer = false
+    // this.showProgressTransfer = true
+    // this.allProgress = []
+    // console.log("获取媒体库项目", this.libraryId)
+    // this.libraryItems = await getLibrarieItems(this.libraryId)
+    // await Promise.all(this.libraryItems.map(async (element) => {
+    //   let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+    //   if (coverStatus === false) {
+    //     try {
+    //       await getCover(element.id)
+    //       let progress = await getProgress(element.id)
+    //       this.allProgress.push(progress)
+    //     } catch (error) {
+    //       console.error(JSON.stringify(error));
+    //       console.log("获取封面失败。")
+    //     }
+    //   }
+    // }));
+    // this.showProgressTransfer = false
   }
 
   build() {

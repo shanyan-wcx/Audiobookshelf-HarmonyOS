@@ -169,9 +169,10 @@ export interface Progress {
 }
 
 export interface UpdateProgress {
-  progress: number;
+  duration: number;
   currentTime: number;
-  isFinished: boolean;
+  progress: number;
+
 }
 
 export interface PlayItem {

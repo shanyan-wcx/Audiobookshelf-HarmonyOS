@@ -57,6 +57,15 @@
             "entry"
           ]
         }
+      },
+      {
+        "name": "ohos.permission.GET_NETWORK_INFO",
+        "reason": "$string:module_desc",
+        "usedScene": {
+          "abilities": [
+            "entry"
+          ]
+        }
       }
     ]
   }

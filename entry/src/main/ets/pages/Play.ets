@@ -1,9 +1,9 @@
 import window from '@ohos.window';
-import { display } from '@kit.ArkUI';
+import { display, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Chapter } from '../api/Interface'
+import { LibraryItem, Chapter, Track } from '../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -34,7 +34,6 @@ export default struct Play {
   @State coverWidth: string = "20%"
   @State showChapters: boolean = false
   @State showMenu: boolean = false
-  @Consume nowPlayTime: number
   @Consume showPlayTransfer: boolean
   @Consume isPlayingTransfer: boolean
   @Consume startPlayingTransfer: boolean
@@ -47,19 +46,11 @@ export default struct Play {
   @Consume nowPlayingDuration: number
   @Consume nowPlayedTime: number
   @Consume nowPlayedProgress: number
-
-  @Builder
-  bindMenuBuilder() {
-    Menu() {
-      MenuItem({ content: "关闭播放器" })
-        .onClick(() => {
-          this.startPlayingTransfer === false
-        })
-        .width('auto')
-        .height('auto')
-        .borderRadius(10)
-    }
-  }
+  @Consume nowPlayingTracks: Track[]
+  @Consume nowPlayingIndex: number
+  @Consume server: string
+  @Consume apitoken: string | null
+  @Consume nowTrackStartTime: number
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -114,14 +105,12 @@ export default struct Play {
           .onClick(() => {
             this.showMenu = true
           })
-
-          // .bindMenu(this.bindMenuBuilder())
         }
         .width("100%")
         .justifyContent(FlexAlign.SpaceBetween)
 
         Image(this.showProgressTransfer === false ?
-        fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
+        fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
           .alt($rawfile('nocover.jpg'))
           .width(this.coverWidth)
           .aspectRatio(1)
@@ -178,8 +167,21 @@ export default struct Play {
             .width(45)
             .height(45)
             .backgroundColor('#00000000')
-            .onClick(() => {
-
+            .onClick(async () => {
+              await this.avPlayer!.reset();
+              if (this.nowPlayingIndex - 1 < 0) {
+                promptAction.showToast({
+                  message: '已经是第一个',
+                  duration: 500
+                });
+              } else {
+                this.nowPlayingIndex--
+                this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
+                this.nowPlayedTime = 0
+                this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
+                this.avPlayer!.url =
+                  this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+              }
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -192,7 +194,13 @@ export default struct Play {
             .margin({ right: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-
+              if (this.nowPlayedTime - 10 < 0) {
+                this.nowPlayedTime = 0
+              } else {
+                this.nowPlayedTime -= 10
+              }
+              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+              this.avPlayer!.seek(this.nowPlayedTime * 1000)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -222,7 +230,13 @@ export default struct Play {
             .margin({ left: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-
+              if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
+                this.nowPlayedTime = this.nowPlayingDuration
+              } else {
+                this.nowPlayedTime += 10
+              }
+              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+              this.avPlayer!.seek(this.nowPlayedTime * 1000)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -233,8 +247,21 @@ export default struct Play {
             .width(45)
             .height(45)
             .backgroundColor('#00000000')
-            .onClick(() => {
-
+            .onClick(async () => {
+              await this.avPlayer!.reset();
+              if (this.nowPlayingIndex + 1 > this.nowPlayingTracks.length - 1) {
+                promptAction.showToast({
+                  message: '已经是最后一个',
+                  duration: 500
+                });
+              } else {
+                this.nowPlayingIndex++
+                this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
+                this.nowPlayedTime = 0
+                this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
+                this.avPlayer!.url =
+                  this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+              }
             })
           }
           .width('100%')
@@ -360,7 +387,14 @@ export default struct Play {
                 .height(50)
                 .justifyContent(FlexAlign.SpaceBetween)
                 .backgroundColor('#333333')
-                .onClick(() => {
+                .onClick(async () => {
+                  await this.avPlayer!.reset();
+                  this.nowPlayingIndex = index
+                  this.playTitle = this.nowPlayingChapters[index].title
+                  this.nowPlayedTime = 0
+                  this.nowTrackStartTime = this.nowPlayingTracks[index].startOffset
+                  this.avPlayer!.url =
+                    this.server + this.nowPlayingTracks[index].contentUrl + "?token=" + this.apitoken
                   this.showChapters = false
                 })
               }

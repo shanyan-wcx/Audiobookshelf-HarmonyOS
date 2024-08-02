@@ -28,7 +28,6 @@ export default struct Detail {
   @Consume startPlayingTransfer: boolean
   @State coverWidth: string = "20%"
   @State descriptionLine: number = 0
-  @Consume nowPlayTime: number
   @Consume allProgress: Progress[]
   @Consume itemTransfer: LibraryItem
   @Consume isPlayingTransfer: boolean
@@ -38,38 +37,45 @@ export default struct Detail {
   @Consume avPlayer: media.AVPlayer | null
   @Consume playTitle: string
   @Consume server: string
-  @State apitoken: string | null = null
-  @State currentTime: number = 0
+  @Consume apitoken: string | null
   @Consume nowPlayingTracks: Track[]
   @Consume nowPlayingIndex: number
   @Consume nowPlayingDuration: number
   @Consume nowPlayedTime: number
   @Consume nowPlayedProgress: number
   @Consume nowTrackStartTime: number
+  @State elapsedTime: number = 0
 
   setAVPlayerCallback(avPlayer: media.AVPlayer) {
     avPlayer.on('durationUpdate', (duration: number) => {
       this.nowPlayingDuration = duration / 1000
     })
     avPlayer.on('timeUpdate', async (time: number) => {
+      this.elapsedTime += 100
       this.nowPlayedTime = time / 1000
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-      if (this.nowPlayedTime % 10 === 0) {
-        console.log("开始上传进度")
+      if (this.elapsedTime >= 10000) {
+        let upProgress: UpdateProgress = {
+          duration: 0,
+          currentTime: 0,
+          progress: 0
+        }
         for (let element of this.allProgress) {
           if (element.libraryItemId === this.nowPlayingItem.id) {
-            let upProgress: UpdateProgress = {
-              currentTime: this.nowTrackStartTime + time / 1000,
-              progress: element.currentTime / element.duration,
-              isFinished: false
-            }
-            console.log("当前时间", element.currentTime)
-            console.log("当前进度", element.currentTime)
-            await updateProgress(this.nowPlayingItem.id, upProgress)
+            element.duration = this.nowPlayingItem.media.duration
+            element.currentTime = this.nowTrackStartTime + this.nowPlayedTime
+            element.progress = element.currentTime / element.duration
+            upProgress.duration = element.duration
+            upProgress.currentTime = element.currentTime
+            upProgress.progress = element.progress
             break
           }
         }
-        console.log("上传进度完毕")
+        console.log("当前总时间", upProgress.duration)
+        console.log("当前时间", upProgress.currentTime)
+        console.log("当前进度", upProgress.progress)
+        await updateProgress(this.nowPlayingItem.id, upProgress)
+        this.elapsedTime = 0
       }
     })
     avPlayer.on('seekDone', (seekDoneTime: number) => {
@@ -83,6 +89,7 @@ export default struct Detail {
       switch (state) {
         case 'idle':
           console.info('播放器重置。');
+          this.elapsedTime = 0
           break;
         case 'initialized':
           console.info('播放器初始化。');
@@ -90,8 +97,12 @@ export default struct Detail {
           break;
         case 'prepared':
           console.info('播放器就绪。');
-          avPlayer.seek(this.currentTime)
-          avPlayer.play()
+          avPlayer.seek(this.nowPlayedTime * 1000)
+          if(this.isPlayingTransfer===true){
+            avPlayer.play()
+          }else{
+            avPlayer.pause()
+          }
           break;
         case 'playing':
           console.info('播放器开始播放。');
@@ -102,12 +113,17 @@ export default struct Detail {
         case 'completed':
           console.info('播放完毕。');
           await avPlayer.reset();
-          this.nowPlayingIndex++
-          this.playTitle = this.nowPlayingTracks[this.nowPlayingIndex].title
-          avPlayer.url =
-            this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
-          this.currentTime = 0
-          avPlayer.prepare()
+          if (this.nowPlayingIndex + 1 > this.nowPlayingTracks.length - 1) {
+            avPlayer.stop()
+          } else {
+            this.nowPlayingIndex++
+            this.playTitle = this.nowPlayingTracks[this.nowPlayingIndex].title
+            avPlayer.url =
+              this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+            this.nowPlayedTime = 0
+            this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
+            avPlayer.prepare()
+          }
           break;
         case 'stopped':
           console.info('播放器停止。');
@@ -138,8 +154,8 @@ export default struct Detail {
     this.nowTrackStartTime = playItem.audioTracks[index].startOffset
     console.log("找到音频Url为", url)
     this.nowPlayingIndex = index
-    this.nowPlayTime = playItem.currentTime - playItem.audioTracks[index].startOffset
-    console.log("起始位置为", formatDuration(this.nowPlayTime))
+    this.nowPlayedTime = playItem.currentTime - playItem.audioTracks[index].startOffset
+    console.log("起始位置为", formatDuration(this.nowPlayedTime))
     return url
   }
 
@@ -235,17 +251,15 @@ export default struct Detail {
             .height(40)
             .layoutWeight(1)
             .onClick(async () => {
-              this.avPlayer!.reset()
+              this.isPlayingTransfer = true
+              await this.avPlayer!.reset()
               this.setAVPlayerCallback(this.avPlayer!);
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.nowPlayingItem = this.itemTransfer
               let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
-              this.currentTime = playItem.currentTime
               let url: string = await this.getPlayContent(playItem)
               this.avPlayer!.url = url
-              this.avPlayer!.play();
               this.startPlayingTransfer = true
-              this.isPlayingTransfer = true
             })
 
             Button({ type: ButtonType.Normal }) {

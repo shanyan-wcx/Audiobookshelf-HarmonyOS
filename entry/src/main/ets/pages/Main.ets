@@ -3,7 +3,15 @@ import { media } from '@kit.MediaKit';
 import { router, promptAction, display, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { getLogout, getLibraries, getLibrarieItems, getCover, getProgress } from '../api/Api'
+import {
+  getLogout,
+  getLibraries,
+  getLibrarieItems,
+  getCover,
+  getProgress,
+  getLibrarieItemsInProgress,
+  getLibrarieItemsFinished
+} from '../api/Api'
 import { Library, LibraryItem, Chapter, Progress, Track } from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
@@ -36,7 +44,6 @@ export default struct main {
   @State shadowRadius: number = 0;
   @State isPlaying: boolean = true
   @Provide avPlayer: media.AVPlayer | null = null
-  @Provide nowPlayTime: number = 0
   @Provide @Watch('changePage') isPlayingTransfer: boolean = this.isPlaying
   @State startPlaying: boolean = false
   @State showPlay: boolean = false;
@@ -55,6 +62,9 @@ export default struct main {
   @Provide nowPlayedTime: number = 0
   @Provide nowPlayedProgress: number = 0
   @Provide nowTrackStartTime: number = 0
+  @Provide libraryItemsInProgress: LibraryItem[] = []
+  @Provide libraryItemsFinished: LibraryItem[] = []
+  @Provide apitoken: string | null = this.params.apitoken
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -289,8 +299,27 @@ export default struct main {
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
-    this.showProgressTransfer = false
     this.avPlayer = await media.createAVPlayer();
+
+    this.allProgress = []
+    console.log("获取媒体库项目", this.selectedLibraryId)
+    this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
+    this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+    this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+    await Promise.all(this.libraryItems.map(async (element) => {
+      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+      if (coverStatus === false) {
+        try {
+          await getCover(element.id)
+          let progress = await getProgress(element.id)
+          this.allProgress.push(progress)
+        } catch (error) {
+          console.error(JSON.stringify(error));
+          console.log("获取封面失败。")
+        }
+      }
+    }));
+    this.showProgressTransfer = false
   }
 
   build() {
@@ -503,9 +532,7 @@ export default struct main {
           .visibility(this.pageIndex === 2 ? Visibility.Visible : Visibility.None)
 
           Column() {
-            Detail({
-              apitoken: this.params.apitoken
-            })
+            Detail()
           }
           .backgroundColor("#333333")
           .width("100%")
@@ -577,7 +604,13 @@ export default struct main {
             .margin({ right: 5, bottom: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-
+              if (this.nowPlayedTime - 10 < 0) {
+                this.nowPlayedTime = 0
+              } else {
+                this.nowPlayedTime -= 10
+              }
+              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+              this.avPlayer!.seek(this.nowPlayedTime * 1000)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -609,7 +642,13 @@ export default struct main {
             .margin({ right: 5, bottom: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-
+              if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
+                this.nowPlayedTime = this.nowPlayingDuration
+              } else {
+                this.nowPlayedTime += 10
+              }
+              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+              this.avPlayer!.seek(this.nowPlayedTime * 1000)
             })
           }
           .width('100%')

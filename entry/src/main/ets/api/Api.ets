@@ -1,5 +1,7 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
+import { rcp } from '@kit.RemoteCommunicationKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import {
   LoginInfo,
   User,
@@ -20,11 +22,15 @@ let authToken: string = ""
 let userId: string = ""
 let baseUrl = ""
 
+const session = rcp.createSession();
+
 function createApi() {
   const api: Axios = axios.create({
     baseURL: baseUrl,
-    timeout: 10000,
-    headers: { 'Authorization': `Bearer ${authToken}` }
+    headers: {
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type': 'application/json'
+    }
   });
   return api
 }
@@ -127,12 +133,11 @@ export async function getLibrarieItemsInProgress(libraryId: string): Promise<Lib
       await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.aW4tcHJvZ3Jlc3M%3D`,
         {
           params: { minified: true },
-          timeout: 10000
+          timeout: 50000,
+          readTimeout:10000
         })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
-    });
-    libraryItems.forEach(element => {
       itemTitles.push(element.media.metadata.title)
     });
     console.log("进行中项目", itemTitles.toString());
@@ -156,12 +161,11 @@ export async function getLibrarieItemsFinished(libraryId: string): Promise<Libra
       await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/items?filter=progress.ZmluaXNoZWQ%3D`,
         {
           params: { minified: true },
-          timeout: 10000
+          timeout: 50000,
+          readTimeout:10000
         })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
-    });
-    libraryItems.forEach(element => {
       itemTitles.push(element.media.metadata.title)
     });
     console.log("已完成项目", itemTitles.toString());
@@ -242,6 +246,10 @@ export async function getProgress(itemId: string): Promise<Progress> {
     return progress
   } catch (error) {
     progress.libraryItemId = itemId
+    // promptAction.showToast({
+    //   message: '获取进度失败，请检查网络！',
+    //   duration: 500
+    // });
     return progress
   }
 }
@@ -329,13 +337,35 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
   return playItem
 }
 
+// export async function updateProgress(itemId: string, progress: UpdateProgress) {
+//   const api: Axios = createApi();
+//   try {
+//     const response: AxiosResponse =
+//       await api.post<string, AxiosResponse<string>, UpdateProgress>(`/api/me/progress/${itemId}`, progress, {
+//         headers: {
+//           'X-HTTP-Method-Override': 'PATCH' // 通过这个头部字段表明实际请求方法为PATCH
+//         }
+//       })
+//     console.log(response.data)
+//   } catch (error) {
+//     console.error(JSON.stringify(error));
+//     promptAction.showToast({
+//       message: '上传进度失败，请检查网络！',
+//       duration: 500
+//     });
+//   }
+// }
+
 export async function updateProgress(itemId: string, progress: UpdateProgress) {
-  const api: Axios = createApi();
+  let req = new rcp.Request(baseUrl+`/api/me/progress/${itemId}`, 'PATCH')
+  req.content = JSON.stringify(progress)
+  req.headers = {
+    'Authorization': `Bearer ${authToken}`,
+    'Content-Type': 'application/json'
+  }
   try {
-    const response: AxiosResponse =
-      await api.patch<string, AxiosResponse<string>, UpdateProgress>(`/api/me/progress/${itemId}`, progress, {
-        timeout: 10000
-      })
+    const response: rcp.Response = await session.fetch(req)
+    console.log("上传进度成功", response);
   } catch (error) {
     console.error(JSON.stringify(error));
     promptAction.showToast({
