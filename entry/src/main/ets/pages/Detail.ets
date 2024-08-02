@@ -1,10 +1,13 @@
-import { display } from '@kit.ArkUI';
+import { display,  promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
-import { common } from '@kit.AbilityKit';
+import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
+import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress } from '../api/Interface'
 import { getItem, getPlayItem, updateProgress } from '../api/Api'
+import { getPixelMap } from '../util/fs'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -45,6 +48,144 @@ export default struct Detail {
   @Consume nowPlayedProgress: number
   @Consume nowTrackStartTime: number
   @State elapsedTime: number = 0
+  @Consume showPlayTransfer: boolean
+  @Consume session: AVSessionManager.AVSession | null
+  @State startTime: number = 0
+
+  async setSessionInfo() {
+    // 设置媒体资源时长
+    let metadata: AVSessionManager.AVMetadata = {
+      assetId: '0',
+      title: this.nowPlayingChapters[this.nowPlayingIndex].title,
+      mediaImage: getPixelMap(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`),
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      artist: this.nowPlayingItem.media.metadata.authorName,
+      skipIntervals: 10
+    };
+    this.session!.setAVMetadata(metadata).then(() => {
+      console.info(`SetAVMetadata successfully`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to set AVMetadata. Code: ${err.code}, message: ${err.message}`);
+    });
+  }
+
+  async setPlaybackState(state: number){
+    // 设置状态： 播放状态，进度位置，播放倍速，缓存的时间
+    let playbackState: AVSessionManager.AVPlaybackState = {
+      state: state, // 播放状态
+      position: {
+        elapsedTime: this.nowPlayedTime * 1000, // 已经播放的位置，以ms为单位
+        updateTime: new Date().getTime(), // 应用更新当前位置时的时间戳，以ms为单位
+      },
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      speed: 1.0, // 可选，默认是1.0，播放的倍速，按照应用内支持的speed进行设置，系统不做校验
+    };
+    this.session!.setAVPlaybackState(playbackState, (err) => {
+      if (err) {
+        console.error(`Failed to set AVPlaybackState. Code: ${err.code}, message: ${err.message}`);
+      } else {
+        console.info(`SetAVPlaybackState successfully`);
+      }
+    });
+  }
+
+  setSessionCallback() {
+    this.session!.on('play', () => {
+      this.isPlayingTransfer = !this.isPlayingTransfer
+      this.avPlayer!.play()
+    });
+    this.session!.on('pause', () => {
+      this.isPlayingTransfer = !this.isPlayingTransfer
+      this.avPlayer!.pause()
+    });
+    this.session!.on('stop', async () => {
+      this.startPlayingTransfer = false
+      this.isPlayingTransfer = false
+      this.showPlayTransfer = false
+      this.avPlayer!.stop()
+      await this.session!.deactivate()
+    });
+    this.session!.on('playPrevious', async () => {
+      await this.avPlayer!.reset();
+      if (this.nowPlayingIndex - 1 < 0) {
+        promptAction.showToast({
+          message: '已经是第一个',
+          duration: 500
+        });
+      } else {
+        this.nowPlayingIndex--
+        this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
+        this.nowPlayedTime = 0
+        this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
+        this.avPlayer!.url =
+          this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+        this.setSessionInfo()
+      }
+    });
+    this.session!.on('playNext', async () => {
+      await this.avPlayer!.reset();
+      if (this.nowPlayingIndex + 1 > this.nowPlayingTracks.length - 1) {
+        promptAction.showToast({
+          message: '已经是最后一个',
+          duration: 500
+        });
+      } else {
+        this.nowPlayingIndex++
+        this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
+        this.nowPlayedTime = 0
+        this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
+        this.avPlayer!.url =
+          this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+        this.setSessionInfo()
+      }
+    });
+    this.session!.on('setSpeed', (time) => {
+      console.log('触发setSpeed行为。')
+    });
+
+    this.session!.off('seek');
+    this.session!.off('setLoopMode');
+    this.session!.off('toggleFavorite');
+    this.session!.off('handleKeyEvent');
+    this.session!.off('commonCommand');
+  }
+
+  startContinuousTask() {
+    let wantAgentInfo: wantAgent.WantAgentInfo = {
+      // 点击通知后，将要执行的动作列表
+      // 添加需要被拉起应用的bundleName和abilityName
+      wants: [
+        {
+          bundleName: "com.audiobookshelf.shanyan",
+          abilityName: "com.audiobookshelf.shanyan.EntryAbility"
+        }
+      ],
+      // 指定点击通知栏消息后的动作是拉起ability
+      actionType: wantAgent.OperationType.START_ABILITY,
+      // 使用者自定义的一个私有值
+      requestCode: 0,
+      // 点击通知后，动作执行属性
+      wantAgentFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG]
+    };
+
+    // 通过wantAgent模块下getWantAgent方法获取WantAgent对象
+    wantAgent.getWantAgent(wantAgentInfo).then((wantAgentObj: WantAgent) => {
+      backgroundTaskManager.startBackgroundRunning(context,
+        backgroundTaskManager.BackgroundMode.AUDIO_RECORDING, wantAgentObj).then(() => {
+        console.info(`Succeeded in operationing startBackgroundRunning.`);
+      }).catch((err: BusinessError) => {
+        console.error(`Failed to operation startBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
+      });
+    });
+  }
+
+  stopContinuousTask() {
+    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
+      console.info(`Succeeded in operationing stopBackgroundRunning.`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to operation stopBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
+    });
+  }
 
   setAVPlayerCallback(avPlayer: media.AVPlayer) {
     avPlayer.on('durationUpdate', (duration: number) => {
@@ -90,6 +231,7 @@ export default struct Detail {
         case 'idle':
           console.info('播放器重置。');
           this.elapsedTime = 0
+          this.startTime = 0
           break;
         case 'initialized':
           console.info('播放器初始化。');
@@ -97,18 +239,21 @@ export default struct Detail {
           break;
         case 'prepared':
           console.info('播放器就绪。');
-          avPlayer.seek(this.nowPlayedTime * 1000)
-          if(this.isPlayingTransfer===true){
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE)
+          this.avPlayer!.seek(this.startTime * 1000)
+          if (this.isPlayingTransfer === true) {
             avPlayer.play()
-          }else{
+          } else {
             avPlayer.pause()
           }
           break;
         case 'playing':
           console.info('播放器开始播放。');
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
           break;
         case 'paused':
           console.info('播放器暂停。');
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
           break;
         case 'completed':
           console.info('播放完毕。');
@@ -127,6 +272,7 @@ export default struct Detail {
           break;
         case 'stopped':
           console.info('播放器停止。');
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_STOP)
           await avPlayer.reset();
           break;
         case 'released':
@@ -155,7 +301,7 @@ export default struct Detail {
     console.log("找到音频Url为", url)
     this.nowPlayingIndex = index
     this.nowPlayedTime = playItem.currentTime - playItem.audioTracks[index].startOffset
-    console.log("起始位置为", formatDuration(this.nowPlayedTime))
+    console.log("起始位置为", this.nowPlayedTime * 1000)
     return url
   }
 
@@ -208,6 +354,8 @@ export default struct Detail {
       this.coverWidth = "280"
       this.descriptionLine = 3
     }
+    this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
+    this.setSessionCallback()
   }
 
   build() {
@@ -251,6 +399,7 @@ export default struct Detail {
             .height(40)
             .layoutWeight(1)
             .onClick(async () => {
+              this.startContinuousTask();
               this.isPlayingTransfer = true
               await this.avPlayer!.reset()
               this.setAVPlayerCallback(this.avPlayer!);
@@ -258,8 +407,11 @@ export default struct Detail {
               this.nowPlayingItem = this.itemTransfer
               let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
               let url: string = await this.getPlayContent(playItem)
+              this.startTime = this.nowPlayedTime
               this.avPlayer!.url = url
+              this.setSessionInfo()
               this.startPlayingTransfer = true
+              await this.session!.activate()
             })
 
             Button({ type: ButtonType.Normal }) {

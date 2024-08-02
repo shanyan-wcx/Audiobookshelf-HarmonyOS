@@ -1,8 +1,10 @@
 import window from '@ohos.window';
 import { media } from '@kit.MediaKit';
-import { router, promptAction, display, curves } from '@kit.ArkUI';
+import { router, promptAction, curves } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { avSession as AVSessionManager } from '@kit.AVSessionKit';
+import { BusinessError } from '@kit.BasicServicesKit';
 import {
   getLogout,
   getLibraries,
@@ -65,6 +67,7 @@ export default struct main {
   @Provide libraryItemsInProgress: LibraryItem[] = []
   @Provide libraryItemsFinished: LibraryItem[] = []
   @Provide apitoken: string | null = this.params.apitoken
+  @Provide session: AVSessionManager.AVSession | null = null
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -128,6 +131,43 @@ export default struct main {
     this.showPlay = this.showPlayTransfer
     this.isPlaying = this.isPlayingTransfer
     this.currentItem = this.itemTransfer
+  }
+
+  async setSessionInfo() {
+    // 设置媒体资源时长
+    let metadata: AVSessionManager.AVMetadata = {
+      assetId: '0',
+      title: this.nowPlayingChapters[this.nowPlayingIndex].title,
+      mediaImage: fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`),
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      artist: this.nowPlayingItem.media.metadata.authorName,
+      skipIntervals: 10
+    };
+    this.session!.setAVMetadata(metadata).then(() => {
+      console.info(`SetAVMetadata successfully`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to set AVMetadata. Code: ${err.code}, message: ${err.message}`);
+    });
+  }
+
+  async setPlaybackState(state: number) {
+    // 设置状态： 播放状态，进度位置，播放倍速，缓存的时间
+    let playbackState: AVSessionManager.AVPlaybackState = {
+      state: state, // 播放状态
+      position: {
+        elapsedTime: this.nowPlayedTime * 1000, // 已经播放的位置，以ms为单位
+        updateTime: new Date().getTime(), // 应用更新当前位置时的时间戳，以ms为单位
+      },
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      speed: 1.0, // 可选，默认是1.0，播放的倍速，按照应用内支持的speed进行设置，系统不做校验
+    };
+    this.session!.setAVPlaybackState(playbackState, (err) => {
+      if (err) {
+        console.error(`Failed to set AVPlaybackState. Code: ${err.code}, message: ${err.message}`);
+      } else {
+        console.info(`SetAVPlaybackState successfully`);
+      }
+    });
   }
 
   @Builder
@@ -611,6 +651,9 @@ export default struct main {
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -630,6 +673,7 @@ export default struct main {
               } else {
                 this.avPlayer!.play()
               }
+              this.setSessionInfo()
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -649,6 +693,9 @@ export default struct main {
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
           }
           .width('100%')

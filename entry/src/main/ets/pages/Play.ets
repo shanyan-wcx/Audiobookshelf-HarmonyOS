@@ -3,6 +3,9 @@ import { display, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
+import { avSession as AVSessionManager } from '@kit.AVSessionKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { LibraryItem, Chapter, Track } from '../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -51,6 +54,7 @@ export default struct Play {
   @Consume server: string
   @Consume apitoken: string | null
   @Consume nowTrackStartTime: number
+  @Consume session: AVSessionManager.AVSession | null
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -58,6 +62,52 @@ export default struct Play {
         let area = topWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
         this.statusBarHeight = px2vp(area.topRect.height)
       }
+    });
+  }
+
+  async setSessionInfo() {
+    // 设置媒体资源时长
+    let metadata: AVSessionManager.AVMetadata = {
+      assetId: '0',
+      title: this.nowPlayingChapters[this.nowPlayingIndex].title,
+      mediaImage: fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`),
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      artist: this.nowPlayingItem.media.metadata.authorName,
+      skipIntervals: 10
+    };
+    this.session!.setAVMetadata(metadata).then(() => {
+      console.info(`SetAVMetadata successfully`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to set AVMetadata. Code: ${err.code}, message: ${err.message}`);
+    });
+  }
+
+  async setPlaybackState(state: number){
+    // 设置状态： 播放状态，进度位置，播放倍速，缓存的时间
+    let playbackState: AVSessionManager.AVPlaybackState = {
+      state: state, // 播放状态
+      position: {
+        elapsedTime: this.nowPlayedTime * 1000, // 已经播放的位置，以ms为单位
+        updateTime: new Date().getTime(), // 应用更新当前位置时的时间戳，以ms为单位
+      },
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      speed: 1.0, // 可选，默认是1.0，播放的倍速，按照应用内支持的speed进行设置，系统不做校验
+    };
+    this.session!.setAVPlaybackState(playbackState, (err) => {
+      if (err) {
+        console.error(`Failed to set AVPlaybackState. Code: ${err.code}, message: ${err.message}`);
+      } else {
+        console.info(`SetAVPlaybackState successfully`);
+      }
+    });
+  }
+
+
+  stopContinuousTask() {
+    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
+      console.info(`Succeeded in operationing stopBackgroundRunning.`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to operation stopBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
     });
   }
 
@@ -182,6 +232,10 @@ export default struct Play {
                 this.avPlayer!.url =
                   this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
               }
+              this.setSessionInfo()
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -201,6 +255,9 @@ export default struct Play {
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -237,6 +294,9 @@ export default struct Play {
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -262,6 +322,10 @@ export default struct Play {
                 this.avPlayer!.url =
                   this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
               }
+              this.setSessionInfo()
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
             })
           }
           .width('100%')
@@ -337,12 +401,14 @@ export default struct Play {
             .fontSize(24)
             .fontColor(Color.White)
             .backgroundColor('#333333')
-            .onClick(() => {
+            .onClick(async () => {
+              this.stopContinuousTask();
               this.showMenu = false
               this.startPlayingTransfer = false
               this.isPlayingTransfer = false
               this.showPlayTransfer = false
               this.avPlayer!.stop()
+              await this.session!.deactivate()
             })
         }
         .width('80%')
@@ -386,7 +452,8 @@ export default struct Play {
                 .width('100%')
                 .height(50)
                 .justifyContent(FlexAlign.SpaceBetween)
-                .backgroundColor('#333333')
+                .borderRadius(10)
+                .backgroundColor(index===this.nowPlayingIndex?'#232323':'#333333')
                 .onClick(async () => {
                   await this.avPlayer!.reset();
                   this.nowPlayingIndex = index
@@ -396,6 +463,10 @@ export default struct Play {
                   this.avPlayer!.url =
                     this.server + this.nowPlayingTracks[index].contentUrl + "?token=" + this.apitoken
                   this.showChapters = false
+                  this.setSessionInfo()
+                  this.isPlayingTransfer === true ?
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
                 })
               }
             })

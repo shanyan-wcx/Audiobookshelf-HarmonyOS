@@ -22,6 +22,9 @@
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
+        "backgroundModes": [
+          "audioPlayback"
+        ],
         "skills": [
           {
             "entities": [
@@ -29,6 +32,13 @@
             ],
             "actions": [
               "action.system.home"
+            ]
+          },
+          {
+            "uris": [
+              {
+                "scheme": "Audiobookshelf"
+              }
             ]
           }
         ]
@@ -60,6 +70,15 @@
       },
       {
         "name": "ohos.permission.GET_NETWORK_INFO",
+        "reason": "$string:module_desc",
+        "usedScene": {
+          "abilities": [
+            "entry"
+          ]
+        }
+      },
+      {
+        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
         "reason": "$string:module_desc",
         "usedScene": {
           "abilities": [
