@@ -1,7 +1,6 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
 import { rcp } from '@kit.RemoteCommunicationKit';
-import { BusinessError } from '@kit.BasicServicesKit';
 import {
   LoginInfo,
   User,
@@ -10,7 +9,6 @@ import {
   Chapter,
   Progress,
   PlayItem,
-  DeviceInfo,
   PlayData,
   UpdateProgress
 } from './Interface'

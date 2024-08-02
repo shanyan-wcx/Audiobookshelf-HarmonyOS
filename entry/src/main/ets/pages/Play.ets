@@ -102,15 +102,6 @@ export default struct Play {
     });
   }
 
-
-  stopContinuousTask() {
-    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
-      console.info(`Succeeded in operationing stopBackgroundRunning.`);
-    }).catch((err: BusinessError) => {
-      console.error(`Failed to operation stopBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
-    });
-  }
-
   aboutToAppear() {
     this.getStatusBarHeight()
     this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
@@ -402,7 +393,6 @@ export default struct Play {
             .fontColor(Color.White)
             .backgroundColor('#333333')
             .onClick(async () => {
-              this.stopContinuousTask();
               this.showMenu = false
               this.startPlayingTransfer = false
               this.isPlayingTransfer = false

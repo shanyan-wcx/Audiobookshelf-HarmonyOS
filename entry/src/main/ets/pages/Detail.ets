@@ -53,7 +53,6 @@ export default struct Detail {
   @State startTime: number = 0
 
   async setSessionInfo() {
-    // 设置媒体资源时长
     let metadata: AVSessionManager.AVMetadata = {
       assetId: '0',
       title: this.nowPlayingChapters[this.nowPlayingIndex].title,
@@ -70,15 +69,14 @@ export default struct Detail {
   }
 
   async setPlaybackState(state: number){
-    // 设置状态： 播放状态，进度位置，播放倍速，缓存的时间
     let playbackState: AVSessionManager.AVPlaybackState = {
-      state: state, // 播放状态
+      state: state,
       position: {
-        elapsedTime: this.nowPlayedTime * 1000, // 已经播放的位置，以ms为单位
-        updateTime: new Date().getTime(), // 应用更新当前位置时的时间戳，以ms为单位
+        elapsedTime: this.nowPlayedTime * 1000,
+        updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: 1.0, // 可选，默认是1.0，播放的倍速，按照应用内支持的speed进行设置，系统不做校验
+      speed: 1.0,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -152,38 +150,31 @@ export default struct Detail {
 
   startContinuousTask() {
     let wantAgentInfo: wantAgent.WantAgentInfo = {
-      // 点击通知后，将要执行的动作列表
-      // 添加需要被拉起应用的bundleName和abilityName
       wants: [
         {
           bundleName: "com.audiobookshelf.shanyan",
           abilityName: "com.audiobookshelf.shanyan.EntryAbility"
         }
       ],
-      // 指定点击通知栏消息后的动作是拉起ability
       actionType: wantAgent.OperationType.START_ABILITY,
-      // 使用者自定义的一个私有值
       requestCode: 0,
-      // 点击通知后，动作执行属性
       wantAgentFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG]
     };
-
-    // 通过wantAgent模块下getWantAgent方法获取WantAgent对象
     wantAgent.getWantAgent(wantAgentInfo).then((wantAgentObj: WantAgent) => {
       backgroundTaskManager.startBackgroundRunning(context,
-        backgroundTaskManager.BackgroundMode.AUDIO_RECORDING, wantAgentObj).then(() => {
-        console.info(`Succeeded in operationing startBackgroundRunning.`);
+        backgroundTaskManager.BackgroundMode.AUDIO_PLAYBACK, wantAgentObj).then(() => {
+        console.info(`长时任务启动。`);
       }).catch((err: BusinessError) => {
-        console.error(`Failed to operation startBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
+        console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
       });
     });
   }
 
   stopContinuousTask() {
     backgroundTaskManager.stopBackgroundRunning(context).then(() => {
-      console.info(`Succeeded in operationing stopBackgroundRunning.`);
+      console.info(`长时任务停止。`);
     }).catch((err: BusinessError) => {
-      console.error(`Failed to operation stopBackgroundRunning. Code is ${err.code}, message is ${err.message}`);
+      console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
   }
 
@@ -212,7 +203,6 @@ export default struct Detail {
             break
           }
         }
-        console.log("当前总时间", upProgress.duration)
         console.log("当前时间", upProgress.currentTime)
         console.log("当前进度", upProgress.progress)
         await updateProgress(this.nowPlayingItem.id, upProgress)
@@ -239,6 +229,7 @@ export default struct Detail {
           break;
         case 'prepared':
           console.info('播放器就绪。');
+          this.startContinuousTask();
           this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE)
           this.avPlayer!.seek(this.startTime * 1000)
           if (this.isPlayingTransfer === true) {
@@ -272,6 +263,7 @@ export default struct Detail {
           break;
         case 'stopped':
           console.info('播放器停止。');
+          this.stopContinuousTask();
           this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_STOP)
           await avPlayer.reset();
           break;
@@ -399,7 +391,6 @@ export default struct Detail {
             .height(40)
             .layoutWeight(1)
             .onClick(async () => {
-              this.startContinuousTask();
               this.isPlayingTransfer = true
               await this.avPlayer!.reset()
               this.setAVPlayerCallback(this.avPlayer!);
