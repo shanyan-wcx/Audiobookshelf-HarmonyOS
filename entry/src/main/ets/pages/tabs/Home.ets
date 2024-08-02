@@ -2,9 +2,7 @@ import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
-import { getCover, getLibrarieItemsFinished, getLibrarieItemsInProgress, getProgress, getLibrarieItems } from '../../api/Api'
 import Loading from '../Loading'
-import { JSON } from '@kit.ArkTS';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -56,59 +54,6 @@ export default struct home {
     } else if (this.displayWidth >= 840) {
       this.coverWidth = 320
     }
-
-    // this.showProgressTransfer = true
-    // this.allProgress = []
-    // console.log("获取媒体库项目", this.libraryId)
-    // this.libraryItems = await getLibrarieItems(this.libraryId)
-    // await Promise.all(this.libraryItems.map(async (element) => {
-    //   let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-    //   if (coverStatus === false) {
-    //     try {
-    //       await getCover(element.id)
-    //       let progress = await getProgress(element.id)
-    //       this.allProgress.push(progress)
-    //     } catch (error) {
-    //       console.error(JSON.stringify(error));
-    //       console.log("获取封面失败。")
-    //     }
-    //   }
-    // }));
-    // this.showProgressTransfer = false
-
-    // this.showProgressTransfer = true
-    // this.allProgress = []
-    // console.log("获取进行中项目", this.libraryId)
-    // this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.libraryId)
-    // await Promise.all(this.libraryItemsInProgress.map(async (element) => {
-    //   let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-    //   if (coverStatus === false) {
-    //     try {
-    //       await getCover(element.id)
-    //       let progress = await getProgress(element.id)
-    //       this.allProgress.push(progress)
-    //     } catch (error) {
-    //       console.error(JSON.stringify(error));
-    //       console.log("获取封面失败。")
-    //     }
-    //   }
-    // }));
-    // console.log("获取已完成项目", this.libraryId)
-    // this.libraryItemsFinished = await getLibrarieItemsFinished(this.libraryId)
-    // await Promise.all(this.libraryItemsFinished.map(async (element) => {
-    //   let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-    //   if (coverStatus === false) {
-    //     try {
-    //       await getCover(element.id)
-    //       let progress = await getProgress(element.id)
-    //       this.allProgress.push(progress)
-    //     } catch (error) {
-    //       console.error(JSON.stringify(error));
-    //       console.log("获取封面失败。")
-    //     }
-    //   }
-    // }));
-    // this.showProgressTransfer = false
   }
 
   build() {
