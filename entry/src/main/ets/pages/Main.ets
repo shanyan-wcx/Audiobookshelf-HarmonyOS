@@ -134,7 +134,6 @@ export default struct main {
   }
 
   async setSessionInfo() {
-    // 设置媒体资源时长
     let metadata: AVSessionManager.AVMetadata = {
       assetId: '0',
       title: this.nowPlayingChapters[this.nowPlayingIndex].title,
@@ -151,15 +150,14 @@ export default struct main {
   }
 
   async setPlaybackState(state: number) {
-    // 设置状态： 播放状态，进度位置，播放倍速，缓存的时间
     let playbackState: AVSessionManager.AVPlaybackState = {
-      state: state, // 播放状态
+      state: state,
       position: {
-        elapsedTime: this.nowPlayedTime * 1000, // 已经播放的位置，以ms为单位
-        updateTime: new Date().getTime(), // 应用更新当前位置时的时间戳，以ms为单位
+        elapsedTime: this.nowPlayedTime * 1000,
+        updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: 1.0, // 可选，默认是1.0，播放的倍速，按照应用内支持的speed进行设置，系统不做校验
+      speed: 1.0,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -309,8 +307,8 @@ export default struct main {
     } else {
       Column() {
         Image(icon)
-          .width(20)
-          .height(20)
+          .width(24)
+          .height(24)
       }
       .width('100%')
       .height('100%')
@@ -497,14 +495,14 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
-            .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home_a.png')))
+            .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home.png')))
 
             TabContent() {
               library({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
-            .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/home_a.png')))
+            .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/library.png')))
 
             TabContent() {
               Column()
@@ -515,7 +513,7 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
-            .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/home_a.png')))
+            .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/series.png')))
 
             TabContent() {
               Column()
@@ -525,7 +523,7 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
-            .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/home_a.png')))
+            .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/collections.png')))
 
             TabContent() {
               Column()
@@ -535,7 +533,7 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
-            .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/home_a.png')))
+            .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/authors.png')))
           }
           .width("100%")
           .height('100%')
