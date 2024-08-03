@@ -176,6 +176,8 @@ export interface UpdateProgress {
 }
 
 export interface UpdateSession {
+  deviceInfo: DeviceInfo;
+  mediaPlayer: string;
   currentTime: number;
   timeListened: number;
 }
@@ -212,8 +214,7 @@ export interface PlayItem {
 export interface DeviceInfo {
   id: string;
   userId: string;
-  deviceId: string;
-  ipAddress: string;
+  deviceName: string;
   clientVersion: string;
   clientName: string;
 }

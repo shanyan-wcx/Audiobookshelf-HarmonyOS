@@ -1,6 +1,8 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
 import { promptAction } from '@kit.ArkUI';
+import { bundleManager } from '@kit.AbilityKit';
 import { rcp } from '@kit.RemoteCommunicationKit';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import {
   LoginInfo,
   User,
@@ -292,8 +294,7 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
     deviceInfo: {
       id: '',
       userId: '',
-      deviceId: '',
-      ipAddress: '',
+      deviceName: '',
       clientVersion: '',
       clientName: '',
     },
@@ -308,16 +309,17 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
     audioTracks: [],
     videoTrack: null
   }
+  let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+  let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
   try {
     const response: AxiosResponse =
       await api.post<string, AxiosResponse<string>, PlayData>(`/api/items/${itemId}/play`, {
         deviceInfo: {
           id: '00000000',
           userId: userId,
-          deviceId: '00000000',
-          ipAddress: '',
+          deviceName: deviceInfo.productModel,
           clientName: 'Abs-HarmonyOS',
-          clientVersion: "0.0.1"
+          clientVersion: bundleInfo.versionName
         },
         forceDirectPlay: true
       }, {

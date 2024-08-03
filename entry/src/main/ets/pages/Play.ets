@@ -6,7 +6,9 @@ import { fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
-import { LibraryItem, Chapter, Track, UpdateSession, Progress } from '../api/Interface'
+import { bundleManager } from '@kit.AbilityKit';
+import { deviceInfo } from '@kit.BasicServicesKit';
+import { LibraryItem, Chapter, Track, UpdateSession, Progress, PlayItem } from '../api/Interface'
 import { closeSession } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -59,6 +61,7 @@ export default struct Play {
   @Consume sessionId: string
   @Consume syncTime: number
   @Consume allProgress: Progress[]
+  @Consume playItem: PlayItem | null
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -408,7 +411,6 @@ export default struct Play {
               await this.stopContinuousTask();
               await this.session!.destroy()
               console.log("Session已销毁。")
-
               let currentTime: number = 0
               for (let element of this.allProgress) {
                 if (element.libraryItemId === this.nowPlayingItem.id) {
@@ -416,7 +418,17 @@ export default struct Play {
                   break
                 }
               }
+              let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+              let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
               let updateSession: UpdateSession = {
+                deviceInfo: {
+                  id: '00000000',
+                  userId: this.playItem!.userId,
+                  deviceName: deviceInfo.productModel,
+                  clientName: 'Abs-HarmonyOS',
+                  clientVersion: bundleInfo.versionName
+                },
+                mediaPlayer: "avPlayer",
                 currentTime: currentTime,
                 timeListened: new Date().getTime() / 1000 - this.syncTime
               }

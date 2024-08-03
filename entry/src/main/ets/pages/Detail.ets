@@ -5,6 +5,8 @@ import { fileUri } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
+import { bundleManager } from '@kit.AbilityKit';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress, UpdateSession } from '../api/Interface'
 import { getItem, getPlayItem, updateProgress, syncSession } from '../api/Api'
 import { getPixelMap } from '../util/fs'
@@ -54,6 +56,7 @@ export default struct Detail {
   @Consume backPageIndex: number
   @Consume sessionId: string
   @Consume syncTime: number
+  @Consume playItem: PlayItem | null
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -182,15 +185,26 @@ export default struct Detail {
       this.nowPlayedTime = time / 1000
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
       if (this.elapsedTime >= 5000) {
+        let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+        let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
         let upProgress: UpdateProgress = {
           duration: 0,
           currentTime: 0,
           progress: 0
         }
         let updateSession: UpdateSession = {
+          deviceInfo: {
+            id: '00000000',
+            userId: this.playItem!.userId,
+            deviceName: deviceInfo.productModel,
+            clientName: 'Abs-HarmonyOS',
+            clientVersion: bundleInfo.versionName
+          },
+          mediaPlayer: "avPlayer",
           currentTime: 0,
           timeListened: new Date().getTime() / 1000 - this.syncTime
         }
+        console.log(JSON.stringify(updateSession))
         for (let element of this.allProgress) {
           if (element.libraryItemId === this.nowPlayingItem.id) {
             element.duration = this.nowPlayingItem.media.duration
@@ -396,9 +410,9 @@ export default struct Detail {
               this.setAVPlayerCallback(this.avPlayer!);
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.nowPlayingItem = this.itemTransfer
-              let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
-              let url: string = await this.getPlayContent(playItem)
-              this.sessionId = playItem.id
+              this.playItem = await getPlayItem(this.nowPlayingItem.id)
+              let url: string = await this.getPlayContent(this.playItem)
+              this.sessionId = this.playItem.id
               this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
               console.log("创建Session。")
               await this.setSessionCallback()

@@ -16,7 +16,7 @@ import {
   getAuthors,
   getSeries
 } from '../api/Api'
-import { Library, LibraryItem, Chapter, Progress, Track, Series, Author } from '../api/Interface'
+import { Library, LibraryItem, Chapter, Progress, Track, Series, Author, PlayItem } from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
 import author from './tabs/Author'
@@ -132,6 +132,7 @@ export default struct main {
   @Provide nowPlayingChapters: Chapter[] = []
   @Provide authors: Author[] = []
   @Provide series: Series[] = []
+  @Provide playItem: PlayItem | null = null
   @Provide seriesTransfer: Series = {
     id: '',
     name: '',
@@ -145,7 +146,7 @@ export default struct main {
 
   async changePage() {
     // if (this.PageIndexTransfer === 3 || this.PageIndexTransfer === 4) {
-      this.pageIndex = this.PageIndexTransfer
+    this.pageIndex = this.PageIndexTransfer
     // }
     this.startPlaying = this.startPlayingTransfer
     this.isPlaying = this.isPlayingTransfer
