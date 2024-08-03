@@ -5,8 +5,8 @@ import { fileUri } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
-import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress } from '../api/Interface'
-import { getItem, getPlayItem, updateProgress } from '../api/Api'
+import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress, UpdateSession } from '../api/Interface'
+import { getItem, getPlayItem, updateProgress, syncSession } from '../api/Api'
 import { getPixelMap } from '../util/fs'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -52,6 +52,8 @@ export default struct Detail {
   @Consume session: AVSessionManager.AVSession | null
   @State startTime: number = 0
   @Consume backPageIndex: number
+  @Consume sessionId: string
+  @Consume syncTime: number
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -179,11 +181,15 @@ export default struct Detail {
       this.elapsedTime += 100
       this.nowPlayedTime = time / 1000
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-      if (this.elapsedTime >= 10000) {
+      if (this.elapsedTime >= 5000) {
         let upProgress: UpdateProgress = {
           duration: 0,
           currentTime: 0,
           progress: 0
+        }
+        let updateSession: UpdateSession = {
+          currentTime: 0,
+          timeListened: new Date().getTime() / 1000 - this.syncTime
         }
         for (let element of this.allProgress) {
           if (element.libraryItemId === this.nowPlayingItem.id) {
@@ -193,12 +199,17 @@ export default struct Detail {
             upProgress.duration = element.duration
             upProgress.currentTime = element.currentTime
             upProgress.progress = element.progress
+            updateSession.currentTime = element.currentTime
             break
           }
         }
         console.log("当前时间", upProgress.currentTime)
         console.log("当前进度", upProgress.progress)
         await updateProgress(this.nowPlayingItem.id, upProgress)
+        console.log("会话当前时间", updateSession.currentTime)
+        console.log("会话汇报间隔", updateSession.timeListened)
+        await syncSession(this.sessionId, updateSession)
+        this.syncTime = new Date().getTime() / 1000
         this.elapsedTime = 0
       }
     })
@@ -387,6 +398,7 @@ export default struct Detail {
               this.nowPlayingItem = this.itemTransfer
               let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
               let url: string = await this.getPlayContent(playItem)
+              this.sessionId = playItem.id
               this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
               console.log("创建Session。")
               await this.setSessionCallback()
@@ -396,6 +408,7 @@ export default struct Detail {
               this.startTime = this.nowPlayedTime
               this.avPlayer!.url = url
               this.startPlayingTransfer = true
+              this.syncTime = new Date().getTime() / 1000
             })
 
             Button({ type: ButtonType.Normal }) {

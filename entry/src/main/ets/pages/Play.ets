@@ -6,7 +6,8 @@ import { fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
-import { LibraryItem, Chapter, Track } from '../api/Interface'
+import { LibraryItem, Chapter, Track, UpdateSession, Progress } from '../api/Interface'
+import { closeSession } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -55,6 +56,9 @@ export default struct Play {
   @Consume apitoken: string | null
   @Consume nowTrackStartTime: number
   @Consume session: AVSessionManager.AVSession | null
+  @Consume sessionId: string
+  @Consume syncTime: number
+  @Consume allProgress: Progress[]
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -81,7 +85,7 @@ export default struct Play {
     });
   }
 
-  async setPlaybackState(state: number){
+  async setPlaybackState(state: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
@@ -404,6 +408,21 @@ export default struct Play {
               await this.stopContinuousTask();
               await this.session!.destroy()
               console.log("Session已销毁。")
+
+              let currentTime: number = 0
+              for (let element of this.allProgress) {
+                if (element.libraryItemId === this.nowPlayingItem.id) {
+                  currentTime = element.currentTime
+                  break
+                }
+              }
+              let updateSession: UpdateSession = {
+                currentTime: currentTime,
+                timeListened: new Date().getTime() / 1000 - this.syncTime
+              }
+              console.log("会话当前时间", updateSession.currentTime)
+              console.log("会话汇报间隔", updateSession.timeListened)
+              await closeSession(this.sessionId, updateSession)
             })
         }
         .width('80%')
@@ -448,7 +467,7 @@ export default struct Play {
                 .height(50)
                 .justifyContent(FlexAlign.SpaceBetween)
                 .borderRadius(10)
-                .backgroundColor(index===this.nowPlayingIndex?'#232323':'#333333')
+                .backgroundColor(index === this.nowPlayingIndex ? '#232323' : '#333333')
                 .onClick(async () => {
                   await this.avPlayer!.reset();
                   this.nowPlayingIndex = index

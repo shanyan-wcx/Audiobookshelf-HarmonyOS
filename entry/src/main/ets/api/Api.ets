@@ -12,7 +12,8 @@ import {
   PlayData,
   UpdateProgress,
   Author,
-  Series
+  Series,
+  UpdateSession
 } from './Interface'
 import { downloadCover } from '../util/fs'
 
@@ -392,5 +393,35 @@ export async function getSeries(libraryId: string): Promise<Series[]> {
       duration: 500
     });
     return []
+  }
+}
+
+export async function syncSession(sessionId: string, updateSession: UpdateSession) {
+  const api: Axios = createApi()
+  try {
+    const response: AxiosResponse =
+      await api.post<string, AxiosResponse<string>, UpdateSession>(`api/session/${sessionId}/sync`, updateSession)
+    console.log("同步会话成功", response.data);
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '同步会话失败，请检查网络！',
+      duration: 500
+    });
+  }
+}
+
+export async function closeSession(sessionId: string, updateSession: UpdateSession) {
+  const api: Axios = createApi()
+  try {
+    const response: AxiosResponse =
+      await api.post<string, AxiosResponse<string>, UpdateSession>(`api/session/${sessionId}/close`, updateSession)
+    console.log("关闭会话成功", response.data);
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '关闭会话失败，请检查网络！',
+      duration: 500
+    });
   }
 }

@@ -74,6 +74,8 @@ export default struct main {
   @Provide apitoken: string | null = this.params.apitoken
   @Provide session: AVSessionManager.AVSession | null = null
   @Provide backPageIndex: number = 0
+  @Provide sessionId: string = ''
+  @Provide syncTime: number = 0
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',

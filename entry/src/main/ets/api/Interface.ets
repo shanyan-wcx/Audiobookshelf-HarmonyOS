@@ -175,6 +175,11 @@ export interface UpdateProgress {
 
 }
 
+export interface UpdateSession {
+  currentTime: number;
+  timeListened: number;
+}
+
 export interface PlayItem {
   id: string;
   userId: string;
