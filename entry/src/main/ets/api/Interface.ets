@@ -217,3 +217,47 @@ export interface PlayData {
   deviceInfo: DeviceInfo,
   forceDirectPlay: boolean
 }
+
+export interface Author {
+  id: string;
+  asin: string | null;
+  name: string;
+  description: string | null;
+  imagePath: string | null;
+  addedAt: number;
+  updatedAt: number;
+  numBooks: number;
+}
+
+export interface Book {
+  id: string;
+  ino: string;
+  libraryId: string;
+  folderId: string;
+  path: string;
+  relPath: string;
+  isFile: boolean;
+  mtimeMs: number;
+  ctimeMs: number;
+  birthtimeMs: number;
+  addedAt: number;
+  updatedAt: number;
+  isMissing: boolean;
+  isInvalid: boolean;
+  mediaType: string;
+  media: Media;
+  numFiles: number;
+  size: number;
+  sequence: string;
+}
+
+export interface Series {
+  id: string;
+  name: string;
+  nameIgnorePrefix: string;
+  nameIgnorePrefixSort: string;
+  type: string;
+  books: Book[];
+  addedAt: number;
+  totalDuration: number;
+}

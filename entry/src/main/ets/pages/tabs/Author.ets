@@ -1,0 +1,82 @@
+import { display } from '@kit.ArkUI';
+import { Author } from '../../api/Interface'
+
+@Component
+export default struct author {
+  @State displayWidth: number = 0
+  @State columnsTemplate: string = "1fr"
+  @Consume PageIndexTransfer: number
+  @State libraryId: string = ''
+  @Consume authors: Author[]
+  @Consume backPageIndex: number
+
+  async aboutToAppear() {
+    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      this.columnsTemplate = "1fr 1fr"
+    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      this.columnsTemplate = "1fr 1fr 1fr"
+    } else if (this.displayWidth >= 840) {
+      this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
+    }
+  }
+
+  build() {
+    Column() {
+      Grid() {
+        ForEach(this.authors, (item: number, index) => {
+          GridItem() {
+            Stack({ alignContent: Alignment.Bottom }) {
+              Image("")
+                .alt($rawfile('noprofile.jpg'))
+                .width('100%')
+                .aspectRatio(3/4)
+                .borderRadius(10)
+                .objectFit(ImageFit.Fill)
+                .onClick(async () => {
+
+                })
+              Column() {
+                Text(this.authors[index].name)
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .fontWeight(FontWeight.Bold)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(this.authors[index].numBooks+" 图书")
+                  .fontSize(13)
+                  .fontColor(Color.White)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .width('100%')
+              .height(40)
+              .backgroundColor('#75000000')
+              .justifyContent(FlexAlign.SpaceAround)
+            }
+            .width('100%')
+            .borderRadius(10)
+            .clip(true)
+          }
+          .borderRadius(10)
+        })
+      }
+      .columnsTemplate(this.columnsTemplate)
+      .columnsGap(20)
+      .rowsGap(20)
+      .margin({ left: 15, right: 15 })
+      .padding({ top: 20, bottom: 20 })
+      .height('100%')
+      .scrollBar(BarState.Off)
+      .visibility(this.authors.length !== 0 ? Visibility.Visible : Visibility.None)
+
+      Text("没有作者")
+        .fontColor(Color.White)
+        .fontSize(32)
+        .margin({ top: 200 })
+        .visibility(this.authors.length === 0 ? Visibility.Visible : Visibility.None)
+    }
+    .width('100%')
+    .height('100%')
+  }
+}

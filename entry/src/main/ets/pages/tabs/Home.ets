@@ -207,6 +207,8 @@ export default struct home {
       }
       .width('100%')
       .height('100%')
+      .backgroundImage($rawfile('background.jpg'))
+      .backgroundImageSize(ImageSize.Cover)
 
       Column() {
         Loading()

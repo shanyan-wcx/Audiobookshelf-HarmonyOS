@@ -10,7 +10,9 @@ import {
   Progress,
   PlayItem,
   PlayData,
-  UpdateProgress
+  UpdateProgress,
+  Author,
+  Series
 } from './Interface'
 import { downloadCover } from '../util/fs'
 
@@ -106,8 +108,6 @@ export async function getLibrarieItems(libraryId: string): Promise<LibraryItem[]
       })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
-    });
-    libraryItems.forEach(element => {
       itemTitles.push(element.media.metadata.title)
     });
     console.log("项目", itemTitles.toString());
@@ -132,7 +132,7 @@ export async function getLibrarieItemsInProgress(libraryId: string): Promise<Lib
         {
           params: { minified: true },
           timeout: 50000,
-          readTimeout:10000
+          readTimeout: 10000
         })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
@@ -160,7 +160,7 @@ export async function getLibrarieItemsFinished(libraryId: string): Promise<Libra
         {
           params: { minified: true },
           timeout: 50000,
-          readTimeout:10000
+          readTimeout: 10000
         })
     response.data.results.forEach((element: LibraryItem) => {
       libraryItems.push(element)
@@ -335,27 +335,8 @@ export async function getPlayItem(itemId: string): Promise<PlayItem> {
   return playItem
 }
 
-// export async function updateProgress(itemId: string, progress: UpdateProgress) {
-//   const api: Axios = createApi();
-//   try {
-//     const response: AxiosResponse =
-//       await api.post<string, AxiosResponse<string>, UpdateProgress>(`/api/me/progress/${itemId}`, progress, {
-//         headers: {
-//           'X-HTTP-Method-Override': 'PATCH' // 通过这个头部字段表明实际请求方法为PATCH
-//         }
-//       })
-//     console.log(response.data)
-//   } catch (error) {
-//     console.error(JSON.stringify(error));
-//     promptAction.showToast({
-//       message: '上传进度失败，请检查网络！',
-//       duration: 500
-//     });
-//   }
-// }
-
 export async function updateProgress(itemId: string, progress: UpdateProgress) {
-  let req = new rcp.Request(baseUrl+`/api/me/progress/${itemId}`, 'PATCH')
+  let req = new rcp.Request(baseUrl + `/api/me/progress/${itemId}`, 'PATCH')
   req.content = JSON.stringify(progress)
   req.headers = {
     'Authorization': `Bearer ${authToken}`,
@@ -370,5 +351,46 @@ export async function updateProgress(itemId: string, progress: UpdateProgress) {
       message: '上传进度失败，请检查网络！',
       duration: 500
     });
+  }
+}
+
+export async function getAuthors(libraryId: string): Promise<Author[]> {
+  const api: Axios = createApi()
+  let authors: Author[] = []
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/authors`, {
+        timeout: 10000
+      })
+    authors = response.data.authors
+    return authors
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取作者失败，请检查网络！',
+      duration: 500
+    });
+    return []
+  }
+}
+
+export async function getSeries(libraryId: string): Promise<Series[]> {
+  const api: Axios = createApi()
+  let series: Series[] = []
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/series`, {
+        params: { limit: 99999, minified: true },
+        timeout: 10000
+      })
+    series = response.data.results
+    return series
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取系列失败，请检查网络！',
+      duration: 500
+    });
+    return []
   }
 }

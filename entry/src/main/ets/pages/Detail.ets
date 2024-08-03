@@ -1,4 +1,4 @@
-import { display,  promptAction } from '@kit.ArkUI';
+import { display, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -51,6 +51,7 @@ export default struct Detail {
   @Consume showPlayTransfer: boolean
   @Consume session: AVSessionManager.AVSession | null
   @State startTime: number = 0
+  @Consume backPageIndex: number
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -68,7 +69,7 @@ export default struct Detail {
     });
   }
 
-  async setPlaybackState(state: number){
+  async setPlaybackState(state: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
@@ -80,14 +81,14 @@ export default struct Detail {
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
-        console.error(`Failed to set AVPlaybackState. Code: ${err.code}, message: ${err.message}`);
+        console.error(`设置Session状态失败，Code: ${err.code}, message: ${err.message}`);
       } else {
-        console.info(`SetAVPlaybackState successfully`);
+        console.info("设置Session状态", state);
       }
     });
   }
 
-  setSessionCallback() {
+  async setSessionCallback() {
     this.session!.on('play', () => {
       this.isPlayingTransfer = !this.isPlayingTransfer
       this.avPlayer!.play()
@@ -148,7 +149,7 @@ export default struct Detail {
     this.session!.off('commonCommand');
   }
 
-  startContinuousTask() {
+  async startContinuousTask() {
     let wantAgentInfo: wantAgent.WantAgentInfo = {
       wants: [
         {
@@ -167,14 +168,6 @@ export default struct Detail {
       }).catch((err: BusinessError) => {
         console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
       });
-    });
-  }
-
-  stopContinuousTask() {
-    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
-      console.info(`长时任务停止。`);
-    }).catch((err: BusinessError) => {
-      console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
   }
 
@@ -229,7 +222,6 @@ export default struct Detail {
           break;
         case 'prepared':
           console.info('播放器就绪。');
-          this.startContinuousTask();
           this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE)
           this.avPlayer!.seek(this.startTime * 1000)
           if (this.isPlayingTransfer === true) {
@@ -263,8 +255,6 @@ export default struct Detail {
           break;
         case 'stopped':
           console.info('播放器停止。');
-          this.stopContinuousTask();
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_STOP)
           await avPlayer.reset();
           break;
         case 'released':
@@ -346,8 +336,6 @@ export default struct Detail {
       this.coverWidth = "280"
       this.descriptionLine = 3
     }
-    this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
-    this.setSessionCallback()
   }
 
   build() {
@@ -392,17 +380,22 @@ export default struct Detail {
             .layoutWeight(1)
             .onClick(async () => {
               this.isPlayingTransfer = true
+              await this.startContinuousTask();
               await this.avPlayer!.reset()
               this.setAVPlayerCallback(this.avPlayer!);
               this.nowPlayingChapters = await getItem(this.itemTransfer.id)
               this.nowPlayingItem = this.itemTransfer
               let playItem: PlayItem = await getPlayItem(this.nowPlayingItem.id)
               let url: string = await this.getPlayContent(playItem)
+              this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
+              console.log("创建Session。")
+              await this.setSessionCallback()
+              await this.setSessionInfo()
+              await this.session!.activate()
+              console.log("Session已激活。")
               this.startTime = this.nowPlayedTime
               this.avPlayer!.url = url
-              this.setSessionInfo()
               this.startPlayingTransfer = true
-              await this.session!.activate()
             })
 
             Button({ type: ButtonType.Normal }) {

@@ -12,12 +12,18 @@ import {
   getCover,
   getProgress,
   getLibrarieItemsInProgress,
-  getLibrarieItemsFinished
+  getLibrarieItemsFinished,
+  getAuthors,
+  getSeries
 } from '../api/Api'
-import { Library, LibraryItem, Chapter, Progress, Track } from '../api/Interface'
+import { Library, LibraryItem, Chapter, Progress, Track, Series, Author } from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
+import author from './tabs/Author'
+import series from './tabs/Series'
+import collection from './tabs/Collection'
 import Detail from './Detail'
+import SeriesItems from './SeriesItems'
 import Play from './Play'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -48,8 +54,7 @@ export default struct main {
   @Provide avPlayer: media.AVPlayer | null = null
   @Provide @Watch('changePage') isPlayingTransfer: boolean = this.isPlaying
   @State startPlaying: boolean = false
-  @State showPlay: boolean = false;
-  @Provide @Watch('changePage') showPlayTransfer: boolean = this.showPlay;
+  @Provide showPlayTransfer: boolean = false;
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
   @Provide libraryItems: LibraryItem[] = []
   private controller: TabsController = new TabsController();
@@ -68,6 +73,7 @@ export default struct main {
   @Provide libraryItemsFinished: LibraryItem[] = []
   @Provide apitoken: string | null = this.params.apitoken
   @Provide session: AVSessionManager.AVSession | null = null
+  @Provide backPageIndex: number = 0
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -122,13 +128,24 @@ export default struct main {
   @Provide @Watch('changePage') itemTransfer: LibraryItem = this.currentItem
   @Provide nowPlayingItem: LibraryItem = this.currentItem
   @Provide nowPlayingChapters: Chapter[] = []
+  @Provide authors: Author[] = []
+  @Provide series: Series[] = []
+  @Provide seriesTransfer: Series = {
+    id: '',
+    name: '',
+    nameIgnorePrefix: '',
+    nameIgnorePrefixSort: '',
+    type: '',
+    books: [],
+    addedAt: 0,
+    totalDuration: 0
+  }
 
   async changePage() {
-    if (this.PageIndexTransfer === 3) {
-      this.pageIndex = 3
-    }
+    // if (this.PageIndexTransfer === 3 || this.PageIndexTransfer === 4) {
+      this.pageIndex = this.PageIndexTransfer
+    // }
     this.startPlaying = this.startPlayingTransfer
-    this.showPlay = this.showPlayTransfer
     this.isPlaying = this.isPlayingTransfer
     this.currentItem = this.itemTransfer
   }
@@ -161,9 +178,9 @@ export default struct main {
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
-        console.error(`Failed to set AVPlaybackState. Code: ${err.code}, message: ${err.message}`);
+        console.error(`设置Session状态失败，Code: ${err.code}, message: ${err.message}`);
       } else {
-        console.info(`SetAVPlaybackState successfully`);
+        console.info("设置Session状态", state);
       }
     });
   }
@@ -173,7 +190,7 @@ export default struct main {
     Column() {
       Play()
     }
-    .transition(TransitionEffect.translate({ y: 1000 }).animation({ curve: curves.springMotion(0.4, 1) }))
+    .transition(TransitionEffect.translate({ y: 1000 }).animation({ curve: curves.springMotion(0.6, 1) }))
   }
 
   @Builder
@@ -182,7 +199,7 @@ export default struct main {
       ForEach(libraries, (item: number, index) => {
         MenuItem({ content: libraries[index].name })
           .onClick(async () => {
-            if (this.selectedLibrary !== libraries[index].name) {
+            if (this.selectedLibraryIndex !== index) {
               this.selectedLibrary = libraries[index].name
               this.selectedLibraryId = libraries[index].id
               this.selectedLibraryIndex = index
@@ -192,6 +209,8 @@ export default struct main {
               this.allProgress = []
               console.log("获取媒体库项目", this.selectedLibraryId)
               this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
+              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
               await Promise.all(this.libraryItems.map(async (element) => {
                 let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
                 if (coverStatus === false) {
@@ -223,7 +242,7 @@ export default struct main {
           .width(40)
           .height(40)
           .margin({ left: 15 })
-          .visibility(this.pageIndex === 3 ? Visibility.None : Visibility.Visible)
+          .visibility(this.pageIndex === 3 || this.pageIndex === 4 ? Visibility.None : Visibility.Visible)
         Button({ type: ButtonType.Normal }) {
           Image($rawfile('return.png'))
             .height(32)
@@ -234,10 +253,13 @@ export default struct main {
         .height(40)
         .margin({ left: 15 })
         .backgroundColor('#00000000')
-        .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+        .visibility(this.pageIndex === 3 || this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
         .onClick(() => {
-          this.pageIndex = 0
-          this.PageIndexTransfer = 0
+          if (this.backPageIndex === this.pageIndex) {
+            this.backPageIndex = 0
+          }
+          this.pageIndex = this.backPageIndex
+          this.PageIndexTransfer = this.backPageIndex
         })
 
         Text(this.selectedLibrary)
@@ -344,6 +366,8 @@ export default struct main {
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
     this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
     this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+    this.series = await getSeries(this.selectedLibraryId)
+    this.authors = await getAuthors(this.selectedLibraryId)
     await Promise.all(this.libraryItems.map(async (element) => {
       let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
       if (coverStatus === false) {
@@ -358,6 +382,19 @@ export default struct main {
       }
     }));
     this.showProgressTransfer = false
+  }
+
+  onBackPress() {
+    if (this.pageIndex === 3 || this.pageIndex === 4) {
+      if (this.backPageIndex === this.pageIndex) {
+        this.backPageIndex = 0
+      }
+      this.pageIndex = this.backPageIndex
+      this.PageIndexTransfer = this.backPageIndex
+      return true
+    } else {
+      return false
+    }
   }
 
   build() {
@@ -478,20 +515,14 @@ export default struct main {
       })
 
 
-      Stack() {
-        Navigation(this.pageStack) {
+      Navigation(this.pageStack) {
+        Stack() {
           Tabs({
             barPosition: BarPosition.Start,
             controller: this.controller
           }) {
             TabContent() {
-              Column() {
-                home({ libraryId: this.selectedLibraryId })
-              }
-              .width('100%')
-              .height('100%')
-              .backgroundImage($rawfile('background.jpg'))
-              .backgroundImageSize(ImageSize.Cover)
+              home({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
@@ -505,31 +536,21 @@ export default struct main {
             .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/library.png')))
 
             TabContent() {
-              Column()
-                .width('100%')
-                .height('100%')
-                .backgroundImage($rawfile('background.jpg'))
-                .backgroundImageSize(ImageSize.Cover)
+              series({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
             .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/series.png')))
 
             TabContent() {
-              Column()
-                .width('100%')
-                .height('100%')
-                .backgroundColor("#333333")
+              collection({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
             .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/collections.png')))
 
             TabContent() {
-              Column()
-                .width('100%')
-                .height('100%')
-                .backgroundColor("#333333")
+              author({ libraryId: this.selectedLibraryId })
             }
             .width('100%')
             .height('100%')
@@ -577,27 +598,27 @@ export default struct main {
           .height('100%')
           .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
 
-          // .transition(TransitionEffect.opacity(0).animation({ curve: curves.springMotion(0.6, 1) }))
-        }
-        .mode(NavigationMode.Stack)
-        .padding({ top: this.statusBarHeight })
-        .title(this.titlebar())
-        .titleMode(NavigationTitleMode.Mini)
-        .hideBackButton(true)
-        .backgroundColor('#232323')
+          Column() {
+            SeriesItems()
+          }
+          .backgroundColor("#333333")
+          .width("100%")
+          .height('100%')
+          .visibility(this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
 
-        Column()
-          .width('100%')
-          .height(5)
-          .shadow({
-            offsetX: 0,
-            offsetY: 12,
-            radius: 10,
-            color: '#95000000'
-          })
-          .margin({ top: this.statusBarHeight + 51 })
+          Column()
+            .width('100%')
+            .height(5)
+            .shadow({
+              offsetX: 0,
+              offsetY: 12,
+              radius: 10,
+              color: '#95000000'
+            })
+            .position({
+              y: -5
+            })
 
-        Column() {
           Row() {
             Image(this.showProgressTransfer === false ?
             fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
@@ -606,7 +627,7 @@ export default struct main {
               .aspectRatio(1)
               .borderRadius(10)
               .objectFit(ImageFit.Fill)
-              .margin({ left: 15, right: 5, bottom: 10 })
+              .margin({ left: 15, right: 10, bottom: 10 })
             Column() {
               Marquee({
                 start: true,
@@ -699,34 +720,38 @@ export default struct main {
           .width('100%')
           .height(90)
           .backgroundColor('#232323')
+          .position({
+            bottom: 0
+          })
           .shadow({
             offsetX: 0,
             offsetY: -12,
             radius: 10,
             color: '#95000000'
           })
-          .visibility(this.startPlaying === true ? Visibility.Visible : Visibility.None)
-          .bindContentCover(this.showPlay, this.bindContentCoverBuilder(), {
+          .bindContentCover(this.showPlayTransfer, this.bindContentCoverBuilder(), {
             modalTransition: ModalTransition.NONE,
           })
           .onClick(() => {
+            if (this.showPlayTransfer === true) {
+              this.showPlayTransfer = false
+            }
             this.showPlayTransfer = true;
-            setTimeout(() => {
-              this.startPlayingTransfer = false
-            }, 500);
           })
+          .visibility(this.startPlayingTransfer === true ? Visibility.Visible : Visibility.Hidden)
           .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.6, 1) }))
         }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.End)
-        .hitTestBehavior(HitTestMode.Transparent)
       }
-      .alignContent(Alignment.Top)
+      .mode(NavigationMode.Stack)
+      .padding({ top: this.statusBarHeight })
+      .title(this.titlebar())
+      .titleMode(NavigationTitleMode.Mini)
+      .hideBackButton(true)
+      .backgroundColor('#232323')
+
     }
     .width("100%")
     .height('100%')
-
     .showSideBar(this.sidebarShow)
     .controlButton({
       top: this.statusBarHeight + 13,

@@ -1,23 +1,22 @@
 import { display } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Progress } from '../../api/Interface'
-import Loading from '../Loading'
+import { LibraryItem, Progress, Book, Series } from '../api/Interface'
+import Loading from './Loading'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
 
 @Component
-export default struct library {
+export default struct SeriesItems {
   @State displayWidth: number = 0
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
-  @State libraryId: string = ''
   @Consume libraryItems: LibraryItem[]
   @Consume itemTransfer: LibraryItem
-  @Consume nowPlayingItem: LibraryItem
   @Consume showProgressTransfer: boolean
   @Consume allProgress: Progress[]
+  @Consume seriesTransfer: Series
   @Consume backPageIndex: number
 
   getProgressById(itemId: string): Progress {
@@ -60,11 +59,11 @@ export default struct library {
       Stack() {
         Column() {
           Grid() {
-            ForEach(this.libraryItems, (item: number, index) => {
+            ForEach(this.seriesTransfer.books, (item: number, index) => {
               GridItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
                   Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItems[index].id}.jpg`) :
+                  fileUri.getUriFromPath(filesDir + `/covers/${this.seriesTransfer.books[index].id}.jpg`) :
                   $rawfile('nocover.jpg'))
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
@@ -72,18 +71,23 @@ export default struct library {
                     .borderRadius(10)
                     .objectFit(ImageFit.Fill)
                     .onClick(async () => {
-                      this.itemTransfer = this.libraryItems[index]
-                      this.backPageIndex = 0
+                      for(let item of this.libraryItems){
+                        if(item.id===this.seriesTransfer.books[index].id){
+                          this.itemTransfer = item
+                          break
+                        }
+                      }
+                      this.backPageIndex = 4
                       this.PageIndexTransfer = 3
                     })
                   Progress({
-                    value: this.getProgressById(this.libraryItems[index].id).progress * 100,
+                    value: this.getProgressById(this.seriesTransfer.books[index].id).progress * 100,
                     total: 100,
                     type: ProgressType.Linear
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(this.libraryItems[index].id).progress * 100 === 100 ? Color.Green :
+                    .color(this.getProgressById(this.seriesTransfer.books[index].id).progress * 100 === 100 ? Color.Green :
                     Color.Orange)
                 }
                 .width('100%')
@@ -115,13 +119,13 @@ export default struct library {
       }
       .width('100%')
       .height('100%')
-      .visibility(this.libraryItems.length !== 0 ? Visibility.Visible : Visibility.None)
+      .visibility(this.seriesTransfer.books.length !== 0 ? Visibility.Visible : Visibility.None)
 
       Text("没有项目")
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .visibility(this.libraryItems.length === 0 ? Visibility.Visible : Visibility.None)
+        .visibility(this.seriesTransfer.books.length === 0 ? Visibility.Visible : Visibility.None)
     }
     .width('100%')
     .height('100%')
