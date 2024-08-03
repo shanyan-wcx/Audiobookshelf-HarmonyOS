@@ -1,4 +1,5 @@
 import window from '@ohos.window';
+import { display } from '@kit.ArkUI';
 import { router, promptAction } from '@kit.ArkUI';
 import { getLogin } from '../api/Api'
 import { LoginInfo, Config } from '../api/Interface'
@@ -20,6 +21,10 @@ class RouTmp {
 @Entry
 @Component
 export default struct login {
+  @State displayWidth: number = 0
+  @State loginHeight: string = '45%'
+  @State loginWidth: string = '85%'
+  @State loginTop: string = '20%'
   @State apitoken: string | null = null
   @State statusBarHeight: number = 0
   @State showProgress: boolean = false
@@ -32,6 +37,20 @@ export default struct login {
 
   async aboutToAppear() {
     this.getStatusBarHeight()
+    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      this.loginHeight = '45%'
+      this.loginWidth = '85%'
+      this.loginTop = '45%'
+    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      this.loginHeight = '50%'
+      this.loginWidth = '60%'
+      this.loginTop = '20%'
+    } else if (this.displayWidth >= 840) {
+      this.loginHeight = '60%'
+      this.loginWidth = '45%'
+      this.loginTop = '10%'
+    }
     if (this.params.firstLogin === true) {
       config = readConfig(config)
       if (config.rememberLoginInfo === true) {
@@ -227,12 +246,12 @@ export default struct login {
               }
             })
         }
-        .height('45%')
-        .width('85%')
+        .height(this.loginHeight)
+        .width(this.loginWidth)
         .border({ width: 0, radius: 20, color: Color.White })
         .alignItems(HorizontalAlign.Center)
         .justifyContent(FlexAlign.SpaceEvenly)
-        .margin({ top: 180 })
+        .margin({ top: this.loginTop })
         .backgroundColor('#111111')
 
         Column() {
@@ -241,10 +260,10 @@ export default struct login {
             .height(80)
             .color(Color.White)
         }
-        .height('45%')
-        .width('85%')
+        .height(this.loginHeight)
+        .width(this.loginWidth)
         .border({ width: 0, radius: 20, color: Color.White })
-        .margin({ top: 180 })
+        .margin({ top: this.loginTop })
         .justifyContent(FlexAlign.Center)
         .backgroundColor('#75000000')
         .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)

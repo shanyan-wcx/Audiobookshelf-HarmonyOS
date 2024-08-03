@@ -50,9 +50,9 @@ export default struct home {
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = 180
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-      this.coverWidth = 280
+      this.coverWidth = 170
     } else if (this.displayWidth >= 840) {
-      this.coverWidth = 320
+      this.coverWidth = 220
     }
   }
 

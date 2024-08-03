@@ -48,7 +48,7 @@ export default struct SeriesItems {
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.columnsTemplate = "1fr 1fr"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-      this.columnsTemplate = "1fr 1fr 1fr"
+      this.columnsTemplate = "1fr 1fr 1fr 1fr"
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
