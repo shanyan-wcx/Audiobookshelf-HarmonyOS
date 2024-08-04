@@ -1,8 +1,10 @@
 import { media } from '@kit.MediaKit';
 import { router, promptAction, curves, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { webview } from '@kit.ArkWeb';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
+import { bundleManager } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import {
   getLogout,
@@ -27,7 +29,8 @@ import Play from './Play'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
-
+let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
 let libraries: Library[] = []
 
 class RouTmp {
@@ -40,6 +43,7 @@ class RouTmp {
 @Component
 export default struct main {
   @State statusBarHeight: number = 0;
+  @State showPrivacy: boolean = false
   @State index: number = 0;
   @State pageIndex: number = 0;
   @Provide @Watch('changePage') PageIndexTransfer: number = this.pageIndex
@@ -57,6 +61,7 @@ export default struct main {
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
   @Provide libraryItems: LibraryItem[] = []
   private controller: TabsController = new TabsController();
+  private webController: WebviewController = new webview.WebviewController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
   @Provide allProgress: Progress[] = []
@@ -434,373 +439,36 @@ export default struct main {
   }
 
   build() {
-    SideBarContainer(SideBarContainerType.Overlay) {
-      Column() {
-        Text("欢迎，" + this.params.username)
-          .width("100%")
-          .height(40)
-          .fontSize(20)
-          .textAlign(TextAlign.Start)
-          .fontColor(Color.White)
-          .margin({ left: 35, top: this.statusBarHeight + 7 })
-        Row() {
-          Image($rawfile("tabs/home.png"))
-            .width(20)
-            .height(20)
-            .margin({ left: 20 })
-          Text("首页")
-            .width("auto")
-            .height("30")
+    Stack() {
+      SideBarContainer(SideBarContainerType.Overlay) {
+        Column() {
+          Text("欢迎，" + this.params.username)
+            .width("100%")
+            .height(40)
             .fontSize(20)
             .textAlign(TextAlign.Start)
             .fontColor(Color.White)
-            .margin({ left: 15 })
-        }
-        .width("100%")
-        .height(60)
-        .margin({ top: 15 })
-        .backgroundColor(this.pageIndex === 0 ? '#4F5052' : '#00000000')
-        .onClick(() => {
-          this.pageIndex = 0
-          this.PageIndexTransfer = 0
-          animateTo({
-            duration: 300,
-            curve: Curve.EaseOut,
-          }, () => {
-            this.sidebarShow = false
-          })
-        })
-
-        Row() {
-          Image($rawfile("tabs/home.png"))
-            .width(20)
-            .height(20)
-            .margin({ left: 20 })
-          Text("用户信息统计")
-            .width("auto")
-            .height("30")
-            .fontSize(20)
-            .textAlign(TextAlign.Start)
-            .fontColor(Color.White)
-            .margin({ left: 15 })
-        }
-        .width("100%")
-        .height(60)
-        .backgroundColor(this.pageIndex === 1 ? '#4F5052' : '#00000000')
-        .onClick(() => {
-          this.pageIndex = 1
-          this.PageIndexTransfer = 1
-          animateTo({
-            duration: 300,
-            curve: Curve.EaseOut,
-          }, () => {
-            this.sidebarShow = false
-          })
-        })
-
-        Row() {
-          Image($rawfile("tabs/home.png"))
-            .width(20)
-            .height(20)
-            .margin({ left: 20 })
-          Text("设置")
-            .width("auto")
-            .height("30")
-            .fontSize(20)
-            .textAlign(TextAlign.Start)
-            .fontColor(Color.White)
-            .margin({ left: 15 })
-        }
-        .width("100%")
-        .height(60)
-        .backgroundColor(this.pageIndex === 2 ? '#4F5052' : '#00000000')
-        .onClick(() => {
-          this.pageIndex = 2
-          this.PageIndexTransfer = 2
-          animateTo({
-            duration: 300,
-            curve: Curve.EaseOut,
-          }, () => {
-            this.sidebarShow = false
-          })
-        })
-
-        Row() {
-          Image($rawfile("tabs/home.png"))
-            .width(20)
-            .height(20)
-            .margin({ left: 20 })
-          Text("切换服务器/用户")
-            .width("auto")
-            .height("30")
-            .fontSize(20)
-            .textAlign(TextAlign.Start)
-            .fontColor(Color.White)
-            .margin({ left: 15 })
-        }
-        .width("100%")
-        .height(60)
-        .onClick(async () => {
-          animateTo({
-            duration: 300,
-            curve: Curve.EaseOut,
-          }, () => {
-            this.sidebarShow = false
-          })
-          await getLogout()
-          promptAction.showToast({
-            message: '退出登录！',
-            duration: 500
-          });
-          router.replaceUrl({
-            url: 'pages/Login',
-            params: {
-              firstLogin: false
-            }
-          })
-        })
-      }
-      .width('100%')
-      .height("100%")
-      .backgroundColor("#383838")
-      .shadow({
-        radius: this.shadowRadius,
-        color: '#95000000',
-        offsetX: vp2px(-15),
-        offsetY: vp2px(0)
-      })
-
-      Navigation(this.pageStack) {
-        Stack() {
-          Tabs({
-            barPosition: BarPosition.Start,
-            controller: this.controller
-          }) {
-            TabContent() {
-              home({ libraryId: this.selectedLibraryId })
-                .backgroundImage($rawfile('background.jpg'))
-                .backgroundImageSize(ImageSize.Cover)
-            }
-            .width('100%')
-            .height('100%')
-            .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home.png')))
-
-            TabContent() {
-              library({ libraryId: this.selectedLibraryId })
-                .backgroundImage($rawfile('background.jpg'))
-                .backgroundImageSize(ImageSize.Cover)
-            }
-            .width('100%')
-            .height('100%')
-            .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/library.png')))
-
-            TabContent() {
-              series({ libraryId: this.selectedLibraryId })
-            }
-            .width('100%')
-            .height('100%')
-            .backgroundImage($rawfile('background.jpg'))
-            .backgroundImageSize(ImageSize.Cover)
-            .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/series.png')))
-
-            TabContent() {
-              collection({ libraryId: this.selectedLibraryId })
-            }
-            .width('100%')
-            .height('100%')
-            .backgroundColor("#333333")
-            .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/collections.png')))
-
-            TabContent() {
-              author({ libraryId: this.selectedLibraryId })
-            }
-            .width('100%')
-            .height('100%')
-            .backgroundColor("#333333")
-            .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/authors.png')))
-          }
-          .width("100%")
-          .height('100%')
-          .barHeight(40)
-          .onChange((index: number) => {
-            this.index = index
-          })
-          .visibility(this.pageIndex === 0 ? Visibility.Visible : Visibility.None)
-
-          Column() {
-            Text("用户信息统计")
-              .fontSize(40)
-              .fontColor(Color.White)
-              .width('100%')
-              .height('100%')
-              .textAlign(TextAlign.Center)
-          }
-          .backgroundColor("#333333")
-          .width("100%")
-          .height('100%')
-          .visibility(this.pageIndex === 1 ? Visibility.Visible : Visibility.None)
-
-          Column() {
-            Text("设置")
-              .fontSize(40)
-              .fontColor(Color.White)
-              .width('100%')
-              .height('100%')
-              .textAlign(TextAlign.Center)
-          }
-          .backgroundColor("#333333")
-          .width("100%")
-          .height('100%')
-          .visibility(this.pageIndex === 2 ? Visibility.Visible : Visibility.None)
-
-          Column() {
-            Detail()
-          }
-          .backgroundColor("#333333")
-          .width("100%")
-          .height('100%')
-          .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
-
-          Column() {
-            SeriesItems()
-          }
-          .backgroundImage($rawfile('background.jpg'))
-          .backgroundImageSize(ImageSize.Cover)
-          .width("100%")
-          .height('100%')
-          .visibility(this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
-
-          Column()
-            .width('100%')
-            .height(5)
-            .shadow({
-              offsetX: 0,
-              offsetY: 12,
-              radius: 10,
-              color: '#95000000'
-            })
-            .position({
-              y: -5
-            })
-
+            .margin({ left: 35, top: this.statusBarHeight + 7 })
           Row() {
-            Image(this.showProgressTransfer === false ?
-            fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
-              .alt($rawfile('nocover.jpg'))
-              .width(60)
-              .aspectRatio(1)
-              .borderRadius(10)
-              .objectFit(ImageFit.Fill)
-              .margin({ left: 15, right: 10, bottom: 10 })
-            Column() {
-              Marquee({
-                start: true,
-                step: 3,
-                src: this.playTitle
-              })
-                .fontColor(Color.White)
-                .fontSize(18)
-                .width('auto')
-              Text(this.nowPlayingItem.media.metadata.authorName)
-                .fontColor(Color.White)
-                .fontSize(16)
-                .width('auto')
-                .margin({ top: 5 })
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            .margin({ bottom: 15 })
-            .alignItems(HorizontalAlign.Start)
-            .width('100%')
-            .layoutWeight(1)
-
-            Blank()
-              .margin({ bottom: 10 })
-
-            Button({ type: ButtonType.Circle }) {
-              Image($rawfile('rewind.png'))
-                .width(30)
-                .height(30)
-            }
-            .width(40)
-            .height(40)
-            .margin({ right: 5, bottom: 10 })
-            .backgroundColor('#00000000')
-            .onClick(() => {
-              if (this.nowPlayedTime - 10 < 0) {
-                this.nowPlayedTime = 0
-              } else {
-                this.nowPlayedTime -= 10
-              }
-              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-              this.avPlayer!.seek(this.nowPlayedTime * 1000)
-              this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
-            })
-
-            Button({ type: ButtonType.Circle }) {
-              Image(this.isPlaying === true ? $rawfile('suspend.png') : $rawfile('play.png'))
-                .width(30)
-                .height(30)
-            }
-            .width(50)
-            .height(50)
-            .margin({ right: 5, bottom: 10 })
-            .backgroundColor('#383838')
-            .onClick(() => {
-              this.isPlaying = !this.isPlaying
-              this.isPlayingTransfer = this.isPlaying
-              if (this.isPlaying === false) {
-                this.avPlayer!.pause()
-              } else {
-                this.avPlayer!.play()
-              }
-              this.setSessionInfo()
-            })
-
-            Button({ type: ButtonType.Circle }) {
-              Image($rawfile('forward.png'))
-                .width(30)
-                .height(30)
-            }
-            .width(40)
-            .height(40)
-            .margin({ right: 5, bottom: 10 })
-            .backgroundColor('#00000000')
-            .onClick(() => {
-              if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
-                this.nowPlayedTime = this.nowPlayingDuration
-              } else {
-                this.nowPlayedTime += 10
-              }
-              this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-              this.avPlayer!.seek(this.nowPlayedTime * 1000)
-              this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
-            })
+            Image($rawfile("tabs/home.png"))
+              .width(20)
+              .height(20)
+              .margin({ left: 20 })
+            Text("首页")
+              .width("auto")
+              .height("30")
+              .fontSize(20)
+              .textAlign(TextAlign.Start)
+              .fontColor(Color.White)
+              .margin({ left: 15 })
           }
-          .width('100%')
-          .height(90)
-          .backgroundColor('#232323')
-          .position({
-            bottom: 0
-          })
-          .shadow({
-            offsetX: 0,
-            offsetY: -12,
-            radius: 10,
-            color: '#95000000'
-          })
-          .bindContentCover(this.showPlayTransfer, this.bindContentCoverBuilder(), {
-            modalTransition: ModalTransition.NONE,
-          })
+          .width("100%")
+          .height(60)
+          .margin({ top: 15 })
+          .backgroundColor(this.pageIndex === 0 ? '#4F5052' : '#00000000')
           .onClick(() => {
-            if (this.showPlayTransfer === true) {
-              this.showPlayTransfer = false
-            }
-            this.showPlayTransfer = true;
+            this.pageIndex = 0
+            this.PageIndexTransfer = 0
             animateTo({
               duration: 300,
               curve: Curve.EaseOut,
@@ -808,48 +476,464 @@ export default struct main {
               this.sidebarShow = false
             })
           })
-          .visibility(this.startPlayingTransfer === true ? Visibility.Visible : Visibility.Hidden)
-          .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.6, 1) }))
+
+          Row() {
+            Image($rawfile("tabs/home.png"))
+              .width(20)
+              .height(20)
+              .margin({ left: 20 })
+            Text("用户信息统计")
+              .width("auto")
+              .height("30")
+              .fontSize(20)
+              .textAlign(TextAlign.Start)
+              .fontColor(Color.White)
+              .margin({ left: 15 })
+          }
+          .width("100%")
+          .height(60)
+          .backgroundColor(this.pageIndex === 1 ? '#4F5052' : '#00000000')
+          .onClick(() => {
+            this.pageIndex = 1
+            this.PageIndexTransfer = 1
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
+          })
+
+          Row() {
+            Image($rawfile("tabs/home.png"))
+              .width(20)
+              .height(20)
+              .margin({ left: 20 })
+            Text("设置")
+              .width("auto")
+              .height("30")
+              .fontSize(20)
+              .textAlign(TextAlign.Start)
+              .fontColor(Color.White)
+              .margin({ left: 15 })
+          }
+          .width("100%")
+          .height(60)
+          .backgroundColor(this.pageIndex === 2 ? '#4F5052' : '#00000000')
+          .onClick(() => {
+            this.pageIndex = 2
+            this.PageIndexTransfer = 2
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
+          })
+
+          Row() {
+            Image($rawfile("tabs/home.png"))
+              .width(20)
+              .height(20)
+              .margin({ left: 20 })
+            Text("切换服务器/用户")
+              .width("auto")
+              .height("30")
+              .fontSize(20)
+              .textAlign(TextAlign.Start)
+              .fontColor(Color.White)
+              .margin({ left: 15 })
+          }
+          .width("100%")
+          .height(60)
+          .onClick(async () => {
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
+            await getLogout()
+            promptAction.showToast({
+              message: '退出登录！',
+              duration: 500
+            });
+            router.replaceUrl({
+              url: 'pages/Login',
+              params: {
+                firstLogin: false
+              }
+            })
+          })
+
+          Column() {
+            Row() {
+              Text("隐私政策")
+                .fontSize(11)
+                .fontColor(Color.Gray)
+              Text('https://privacy.shanyan.work')
+                .fontSize(11)
+                .fontColor(Color.Gray)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .decoration({ type: TextDecorationType.Underline, color: Color.Gray })
+                .onClick(() => {
+                  animateTo({
+                    duration: 300,
+                    curve: Curve.EaseOut,
+                  }, () => {
+                    this.sidebarShow = false
+                  })
+                  this.showPrivacy = true
+                })
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+
+            Row() {
+              Text('v' + bundleInfo.versionName)
+                .fontSize(11)
+                .fontColor(Color.Gray)
+              Text('浙ICP备XXXXXXXXXX号')
+                .fontSize(11)
+                .fontColor(Color.Gray)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('100%')
+            .margin({ top: 10 })
+            .justifyContent(FlexAlign.SpaceBetween)
+          }
+          .width('100%')
+          .height('auto')
+          .padding({ left: 20, right: 20 })
+          .position({
+            bottom: 25
+          })
         }
-      }
-      .mode(NavigationMode.Stack)
-      .padding({ top: this.statusBarHeight })
-      .title(this.titlebar())
-      .titleMode(NavigationTitleMode.Mini)
-      .hideBackButton(true)
-      .backgroundColor('#232323')
-      .onClick(() => {
-        animateTo({
-          duration: 300,
-          curve: Curve.EaseOut,
-        }, () => {
-          this.sidebarShow = false
+        .width('100%')
+        .height("100%")
+        .backgroundColor("#383838")
+        .shadow({
+          radius: this.shadowRadius,
+          color: '#95000000',
+          offsetX: vp2px(-15),
+          offsetY: vp2px(0)
         })
-      })
-    }
-    .width("100%")
-    .height('100%')
-    .showSideBar(this.sidebarShow)
-    .controlButton({
-      top: this.statusBarHeight + 13,
-      width: 26,
-      height: 26,
-      icons: {
-        shown: $rawfile('sidebar.png'),
-        hidden: $rawfile('sidebar.png')
+
+        Navigation(this.pageStack) {
+          Stack() {
+            Tabs({
+              barPosition: BarPosition.Start,
+              controller: this.controller
+            }) {
+              TabContent() {
+                home({ libraryId: this.selectedLibraryId })
+                  .backgroundImage($rawfile('background.jpg'))
+                  .backgroundImageSize(ImageSize.Cover)
+              }
+              .width('100%')
+              .height('100%')
+              .tabBar(this.TabBuilder("首页", 0, $rawfile('tabs/home.png')))
+
+              TabContent() {
+                library({ libraryId: this.selectedLibraryId })
+                  .backgroundImage($rawfile('background.jpg'))
+                  .backgroundImageSize(ImageSize.Cover)
+              }
+              .width('100%')
+              .height('100%')
+              .tabBar(this.TabBuilder("媒体库", 1, $rawfile('tabs/library.png')))
+
+              TabContent() {
+                series({ libraryId: this.selectedLibraryId })
+              }
+              .width('100%')
+              .height('100%')
+              .backgroundImage($rawfile('background.jpg'))
+              .backgroundImageSize(ImageSize.Cover)
+              .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/series.png')))
+
+              TabContent() {
+                collection({ libraryId: this.selectedLibraryId })
+              }
+              .width('100%')
+              .height('100%')
+              .backgroundColor("#333333")
+              .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/collections.png')))
+
+              TabContent() {
+                author({ libraryId: this.selectedLibraryId })
+              }
+              .width('100%')
+              .height('100%')
+              .backgroundColor("#333333")
+              .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/authors.png')))
+            }
+            .width("100%")
+            .height('100%')
+            .barHeight(40)
+            .onChange((index: number) => {
+              this.index = index
+            })
+            .visibility(this.pageIndex === 0 ? Visibility.Visible : Visibility.None)
+
+            Column() {
+              Text("用户信息统计")
+                .fontSize(40)
+                .fontColor(Color.White)
+                .width('100%')
+                .height('100%')
+                .textAlign(TextAlign.Center)
+            }
+            .backgroundColor("#333333")
+            .width("100%")
+            .height('100%')
+            .visibility(this.pageIndex === 1 ? Visibility.Visible : Visibility.None)
+
+            Column() {
+              Text("设置")
+                .fontSize(40)
+                .fontColor(Color.White)
+                .width('100%')
+                .height('100%')
+                .textAlign(TextAlign.Center)
+            }
+            .backgroundColor("#333333")
+            .width("100%")
+            .height('100%')
+            .visibility(this.pageIndex === 2 ? Visibility.Visible : Visibility.None)
+
+            Column() {
+              Detail()
+            }
+            .backgroundColor("#333333")
+            .width("100%")
+            .height('100%')
+            .visibility(this.pageIndex === 3 ? Visibility.Visible : Visibility.None)
+
+            Column() {
+              SeriesItems()
+            }
+            .backgroundImage($rawfile('background.jpg'))
+            .backgroundImageSize(ImageSize.Cover)
+            .width("100%")
+            .height('100%')
+            .visibility(this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
+
+            Column()
+              .width('100%')
+              .height(5)
+              .shadow({
+                offsetX: 0,
+                offsetY: 12,
+                radius: 10,
+                color: '#95000000'
+              })
+              .position({
+                y: -5
+              })
+
+            Row() {
+              Image(this.showProgressTransfer === false ?
+              fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
+                .alt($rawfile('nocover.jpg'))
+                .width(60)
+                .aspectRatio(1)
+                .borderRadius(10)
+                .objectFit(ImageFit.Fill)
+                .margin({ left: 15, right: 10, bottom: 10 })
+              Column() {
+                Marquee({
+                  start: true,
+                  step: 3,
+                  src: this.playTitle
+                })
+                  .fontColor(Color.White)
+                  .fontSize(18)
+                  .width('auto')
+                Text(this.nowPlayingItem.media.metadata.authorName)
+                  .fontColor(Color.White)
+                  .fontSize(16)
+                  .width('auto')
+                  .margin({ top: 5 })
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .margin({ bottom: 15 })
+              .alignItems(HorizontalAlign.Start)
+              .width('100%')
+              .layoutWeight(1)
+
+              Blank()
+                .margin({ bottom: 10 })
+
+              Button({ type: ButtonType.Circle }) {
+                Image($rawfile('rewind.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .width(40)
+              .height(40)
+              .margin({ right: 5, bottom: 10 })
+              .backgroundColor('#00000000')
+              .onClick(() => {
+                if (this.nowPlayedTime - 10 < 0) {
+                  this.nowPlayedTime = 0
+                } else {
+                  this.nowPlayedTime -= 10
+                }
+                this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+                this.avPlayer!.seek(this.nowPlayedTime * 1000)
+                this.isPlayingTransfer === true ?
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              })
+
+              Button({ type: ButtonType.Circle }) {
+                Image(this.isPlaying === true ? $rawfile('suspend.png') : $rawfile('play.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .width(50)
+              .height(50)
+              .margin({ right: 5, bottom: 10 })
+              .backgroundColor('#383838')
+              .onClick(() => {
+                this.isPlaying = !this.isPlaying
+                this.isPlayingTransfer = this.isPlaying
+                if (this.isPlaying === false) {
+                  this.avPlayer!.pause()
+                } else {
+                  this.avPlayer!.play()
+                }
+                this.setSessionInfo()
+              })
+
+              Button({ type: ButtonType.Circle }) {
+                Image($rawfile('forward.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .width(40)
+              .height(40)
+              .margin({ right: 5, bottom: 10 })
+              .backgroundColor('#00000000')
+              .onClick(() => {
+                if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
+                  this.nowPlayedTime = this.nowPlayingDuration
+                } else {
+                  this.nowPlayedTime += 10
+                }
+                this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+                this.avPlayer!.seek(this.nowPlayedTime * 1000)
+                this.isPlayingTransfer === true ?
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              })
+            }
+            .width('100%')
+            .height(90)
+            .backgroundColor('#232323')
+            .position({
+              bottom: 0
+            })
+            .shadow({
+              offsetX: 0,
+              offsetY: -12,
+              radius: 10,
+              color: '#95000000'
+            })
+            .bindContentCover(this.showPlayTransfer, this.bindContentCoverBuilder(), {
+              modalTransition: ModalTransition.NONE,
+            })
+            .onClick(() => {
+              if (this.showPlayTransfer === true) {
+                this.showPlayTransfer = false
+              }
+              this.showPlayTransfer = true;
+              animateTo({
+                duration: 300,
+                curve: Curve.EaseOut,
+              }, () => {
+                this.sidebarShow = false
+              })
+            })
+            .visibility(this.startPlayingTransfer === true ? Visibility.Visible : Visibility.Hidden)
+            .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.6, 1) }))
+          }
+        }
+        .mode(NavigationMode.Stack)
+        .padding({ top: this.statusBarHeight })
+        .title(this.titlebar())
+        .titleMode(NavigationTitleMode.Mini)
+        .hideBackButton(true)
+        .backgroundColor('#232323')
+        .onClick(() => {
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
+        })
       }
-    })
-    .sideBarPosition(SideBarPosition.End)
-    .onChange((show: boolean) => {
-      if (show === true) {
+      .width("100%")
+      .height('100%')
+      .showSideBar(this.sidebarShow)
+      .controlButton({
+        top: this.statusBarHeight + 13,
+        width: 26,
+        height: 26,
+        icons: {
+          shown: $rawfile('sidebar.png'),
+          hidden: $rawfile('sidebar.png')
+        }
+      })
+      .sideBarPosition(SideBarPosition.End)
+      .onChange((show: boolean) => {
+        if (show === true) {
           this.shadowRadius = 50
           this.sidebarShow = true
-      } else {
-        setTimeout(() => {
-          this.shadowRadius = 0
-          this.sidebarShow = false
-        }, 300)
+        } else {
+          setTimeout(() => {
+            this.shadowRadius = 0
+            this.sidebarShow = false
+          }, 300)
+        }
+      })
+
+      Column() {
+        Column() {
+          Web({
+            src: "https://privacy.shanyan.work",
+            controller: this.webController
+          })
+            .width('100%')
+            .height('100%')
+            .backgroundColor('#333333')
+        }
+        .width(300)
+        .height(400)
+        .borderRadius(10)
+        .clip(true)
+        .shadow({
+          offsetX: 0,
+          offsetY: 0,
+          radius: 20,
+          color: Color.Black
+        })
       }
-    })
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#80000000')
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.showPrivacy = false
+      })
+      .visibility(this.showPrivacy === true ? Visibility.Visible : Visibility.None)
+    }
+    .width('100%')
+    .height('100%')
   }
 }
