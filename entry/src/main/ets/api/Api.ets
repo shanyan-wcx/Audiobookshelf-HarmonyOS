@@ -247,10 +247,6 @@ export async function getProgress(itemId: string): Promise<Progress> {
     return progress
   } catch (error) {
     progress.libraryItemId = itemId
-    // promptAction.showToast({
-    //   message: '获取进度失败，请检查网络！',
-    //   duration: 500
-    // });
     return progress
   }
 }

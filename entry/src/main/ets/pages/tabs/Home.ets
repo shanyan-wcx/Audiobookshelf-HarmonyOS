@@ -61,11 +61,11 @@ export default struct home {
       Column() {
         Column() {
           List() {
-            ForEach(this.libraryItemsInProgress, (item: number, index) => {
+            ForEach(this.libraryItemsInProgress, (item: LibraryItem, index) => {
               ListItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
                   Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItemsInProgress[index].id}.jpg`) :
+                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
                   $rawfile('nocover.jpg'))
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
@@ -73,17 +73,18 @@ export default struct home {
                     .borderRadius(10)
                     .objectFit(ImageFit.Fill)
                     .onClick(async () => {
-                      this.itemTransfer = this.libraryItemsInProgress[index]
+                      this.itemTransfer = item
                       this.PageIndexTransfer = 3
                     })
                   Progress({
-                    value: this.getProgressById(this.libraryItemsInProgress[index].id).progress * 100,
+                    value: this.getProgressById(item.id).progress * 100,
                     total: 100,
                     type: ProgressType.Linear
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(this.libraryItemsInProgress[index].id).progress * 100 === 100 ? Color.Green :
+                    .color(this.getProgressById(item.id).progress * 100 === 100 ?
+                    Color.Green :
                     Color.Orange)
                 }
                 .width('100%')
@@ -134,11 +135,11 @@ export default struct home {
 
         Column() {
           List() {
-            ForEach(this.libraryItemsFinished, (item: number, index) => {
+            ForEach(this.libraryItemsFinished, (item: LibraryItem, index) => {
               ListItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
                   Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItemsFinished[index].id}.jpg`) :
+                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
                   $rawfile('nocover.jpg'))
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
@@ -146,17 +147,18 @@ export default struct home {
                     .borderRadius(10)
                     .objectFit(ImageFit.Fill)
                     .onClick(async () => {
-                      this.itemTransfer = this.libraryItemsFinished[index]
+                      this.itemTransfer = item
                       this.PageIndexTransfer = 3
                     })
                   Progress({
-                    value: this.getProgressById(this.libraryItemsFinished[index].id).progress * 100,
+                    value: this.getProgressById(item.id).progress * 100,
                     total: 100,
                     type: ProgressType.Linear
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(this.libraryItemsFinished[index].id).progress * 100 === 100 ? Color.Green :
+                    .color(this.getProgressById(item.id).progress * 100 === 100 ?
+                    Color.Green :
                     Color.Orange)
                 }
                 .width('100%')

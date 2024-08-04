@@ -7,6 +7,19 @@ import Loading from '../Loading'
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
 
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  let formattedTime = '';
+  if (hours > 0) {
+    formattedTime += `${hours} hr `;
+  }
+  formattedTime += `${minutes} min`;
+
+  return formattedTime;
+}
+
 @Component
 export default struct library {
   @State displayWidth: number = 0
@@ -42,6 +55,19 @@ export default struct library {
       }
     }
     return progress
+  }
+
+  getDuration(itemId: string): string {
+    let duration = ''
+    if (this.getProgressById(itemId).currentTime === 0) {
+      duration = "未听过"
+    } else if (this.getProgressById(itemId).isFinished === true) {
+      duration = "已听完"
+    } else {
+      duration =
+        "剩余 " + formatDuration(this.getProgressById(itemId).duration - this.getProgressById(itemId).currentTime)
+    }
+    return duration
   }
 
   async aboutToAppear() {

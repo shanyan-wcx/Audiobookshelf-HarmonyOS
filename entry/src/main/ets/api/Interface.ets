@@ -172,7 +172,7 @@ export interface UpdateProgress {
   duration: number;
   currentTime: number;
   progress: number;
-
+  isFinished: boolean;
 }
 
 export interface UpdateSession {

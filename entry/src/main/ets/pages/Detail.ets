@@ -8,7 +8,14 @@ import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress, UpdateSession } from '../api/Interface'
-import { getItem, getPlayItem, updateProgress, syncSession } from '../api/Api'
+import {
+  getItem,
+  getPlayItem,
+  updateProgress,
+  syncSession,
+  getLibrarieItemsFinished,
+  getLibrarieItemsInProgress
+} from '../api/Api'
 import { getPixelMap } from '../util/fs'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -57,6 +64,12 @@ export default struct Detail {
   @Consume sessionId: string
   @Consume syncTime: number
   @Consume playItem: PlayItem | null
+  @State showMore: boolean = false
+  @State itemProgress: Progress | null = null
+  @State itemDuration: string | null = null
+  @Consume selectedLibraryId: string
+  @Consume libraryItemsInProgress: LibraryItem[]
+  @Consume libraryItemsFinished: LibraryItem[]
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -190,7 +203,8 @@ export default struct Detail {
         let upProgress: UpdateProgress = {
           duration: 0,
           currentTime: 0,
-          progress: 0
+          progress: 0,
+          isFinished: false
         }
         let updateSession: UpdateSession = {
           deviceInfo: {
@@ -204,15 +218,16 @@ export default struct Detail {
           currentTime: 0,
           timeListened: new Date().getTime() / 1000 - this.syncTime
         }
-        console.log(JSON.stringify(updateSession))
         for (let element of this.allProgress) {
           if (element.libraryItemId === this.nowPlayingItem.id) {
             element.duration = this.nowPlayingItem.media.duration
             element.currentTime = this.nowTrackStartTime + this.nowPlayedTime
             element.progress = element.currentTime / element.duration
+            element.isFinished = element.progress === 1 ? true : false
             upProgress.duration = element.duration
             upProgress.currentTime = element.currentTime
             upProgress.progress = element.progress
+            upProgress.isFinished = element.isFinished
             updateSession.currentTime = element.currentTime
             break
           }
@@ -223,8 +238,12 @@ export default struct Detail {
         console.log("会话当前时间", updateSession.currentTime)
         console.log("会话汇报间隔", updateSession.timeListened)
         await syncSession(this.sessionId, updateSession)
+        this.itemProgress = this.getProgressById(this.itemTransfer.id)
+        this.itemDuration = this.getDuration(this.itemTransfer.id)
         this.syncTime = new Date().getTime() / 1000
         this.elapsedTime = 0
+        this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+        this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
       }
     })
     avPlayer.on('seekDone', (seekDoneTime: number) => {
@@ -364,271 +383,375 @@ export default struct Detail {
   }
 
   build() {
-    Column() {
-      Image(this.showProgressTransfer === false ?
-      fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
-        .alt($rawfile('nocover.jpg'))
-        .width(this.coverWidth)
-        .aspectRatio(1)
-        .borderRadius(10)
-        .objectFit(ImageFit.Fill)
-        .margin({ top: 20 })
+    Stack() {
       Column() {
-        Text(this.itemTransfer.media.metadata.title)
-          .fontSize(28)
-          .fontColor(Color.White)
-          .fontWeight(FontWeight.Bold)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(this.itemTransfer.media.metadata.subtitle)
-          .fontSize(18)
-          .fontColor('#E5ECF2')
-          .margin({ top: 5 })
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
-      .width('80%')
-
-      Column() {
+        Image(this.showProgressTransfer === false ?
+        fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
+          .alt($rawfile('nocover.jpg'))
+          .width(this.coverWidth)
+          .aspectRatio(1)
+          .borderRadius(10)
+          .objectFit(ImageFit.Fill)
+          .margin({ top: 20 })
         Column() {
-          Row() {
-            Button({ type: ButtonType.Normal }) {
-              Text("播放")
-                .fontSize(18)
+          Text(this.itemTransfer.media.metadata.title)
+            .fontSize(28)
+            .fontColor(Color.White)
+            .fontWeight(FontWeight.Bold)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(this.itemTransfer.media.metadata.subtitle)
+            .fontSize(18)
+            .fontColor('#E5ECF2')
+            .margin({ top: 5 })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .width('80%')
+
+        Column() {
+          Column() {
+            Row() {
+              Button({ type: ButtonType.Normal }) {
+                Text("播放")
+                  .fontSize(18)
+                  .fontColor(Color.White)
+                  .fontWeight(FontWeight.Bold)
+              }
+              .backgroundColor(Color.Green)
+              .borderRadius(5)
+              .width('100%')
+              .height(40)
+              .layoutWeight(1)
+              .onClick(async () => {
+                this.isPlayingTransfer = true
+                await this.startContinuousTask();
+                await this.avPlayer!.reset()
+                this.setAVPlayerCallback(this.avPlayer!);
+                this.nowPlayingChapters = await getItem(this.itemTransfer.id)
+                this.nowPlayingItem = this.itemTransfer
+                this.playItem = await getPlayItem(this.nowPlayingItem.id)
+                let url: string = await this.getPlayContent(this.playItem)
+                this.sessionId = this.playItem.id
+                this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
+                console.log("创建Session。")
+                await this.setSessionCallback()
+                await this.setSessionInfo()
+                await this.session!.activate()
+                console.log("Session已激活。")
+                this.startTime = this.nowPlayedTime
+                this.avPlayer!.url = url
+                this.startPlayingTransfer = true
+                this.syncTime = new Date().getTime() / 1000
+              })
+
+              Button({ type: ButtonType.Normal }) {
+                Image($rawfile('download.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .backgroundColor('#232323')
+              .borderRadius(5)
+              .width(40)
+              .height(40)
+              .margin({ left: 13 })
+
+              Button({ type: ButtonType.Normal }) {
+                Image($rawfile('list.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .backgroundColor('#232323')
+              .borderRadius(5)
+              .width(40)
+              .height(40)
+              .margin({ left: 13 })
+
+              Button({ type: ButtonType.Normal }) {
+                Image($rawfile('more.png'))
+                  .width(30)
+                  .height(30)
+              }
+              .backgroundColor('#232323')
+              .borderRadius(5)
+              .width(40)
+              .height(40)
+              .margin({ left: 13 })
+              .onClick(() => {
+                this.showMore = true
+              })
+            }
+            .width('100%')
+            .height('auto')
+
+            Column() {
+              Text(this.itemProgress === null ?
+                `你的进度：${this.getProgressById(this.itemTransfer.id).progress * 100}%` :
+                `你的进度：${this.itemProgress!.progress * 100}%`)
+                .fontSize(14)
                 .fontColor(Color.White)
                 .fontWeight(FontWeight.Bold)
+              Text(this.itemDuration === null ? this.getDuration(this.itemTransfer.id) : this.itemDuration)
+                .fontSize(12)
+                .fontColor('#8F9396')
             }
-            .backgroundColor(Color.Green)
+            .backgroundColor('#232323')
             .borderRadius(5)
             .width('100%')
             .height(40)
-            .layoutWeight(1)
-            .onClick(async () => {
-              this.isPlayingTransfer = true
-              await this.startContinuousTask();
-              await this.avPlayer!.reset()
-              this.setAVPlayerCallback(this.avPlayer!);
-              this.nowPlayingChapters = await getItem(this.itemTransfer.id)
-              this.nowPlayingItem = this.itemTransfer
-              this.playItem = await getPlayItem(this.nowPlayingItem.id)
-              let url: string = await this.getPlayContent(this.playItem)
-              this.sessionId = this.playItem.id
-              this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
-              console.log("创建Session。")
-              await this.setSessionCallback()
-              await this.setSessionInfo()
-              await this.session!.activate()
-              console.log("Session已激活。")
-              this.startTime = this.nowPlayedTime
-              this.avPlayer!.url = url
-              this.startPlayingTransfer = true
-              this.syncTime = new Date().getTime() / 1000
-            })
-
-            Button({ type: ButtonType.Normal }) {
-              Image($rawfile('download.png'))
-                .width(30)
-                .height(30)
-            }
-            .backgroundColor('#232323')
-            .borderRadius(5)
-            .width(40)
-            .height(40)
-            .margin({ left: 13 })
-
-            Button({ type: ButtonType.Normal }) {
-              Image($rawfile('list.png'))
-                .width(30)
-                .height(30)
-            }
-            .backgroundColor('#232323')
-            .borderRadius(5)
-            .width(40)
-            .height(40)
-            .margin({ left: 13 })
-
-            Button({ type: ButtonType.Normal }) {
-              Image($rawfile('more.png'))
-                .width(30)
-                .height(30)
-            }
-            .backgroundColor('#232323')
-            .borderRadius(5)
-            .width(40)
-            .height(40)
-            .margin({ left: 13 })
+            .justifyContent(FlexAlign.SpaceEvenly)
           }
           .width('100%')
-          .height('auto')
+          .height(92)
+          .justifyContent(FlexAlign.SpaceBetween)
 
           Column() {
-            Text(`你的进度：${this.getProgressById(this.itemTransfer.id).progress * 100}%`)
+            Row() {
+              Row() {
+                Text("作者")
+                  .fontSize(14)
+                  .fontColor('#8F9396')
+                  .width('auto')
+                  .height('auto')
+                  .textAlign(TextAlign.Start)
+                Text(this.itemTransfer.media.metadata.authorName)
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .width('100%')
+                  .height('auto')
+                  .layoutWeight(1)
+                  .margin({ left: 10 })
+                  .padding({ right: 15 })
+                  .textAlign(TextAlign.Start)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .decoration({ type: TextDecorationType.Underline, color: Color.White })
+              }
+              .width('50%')
+              .justifyContent(FlexAlign.Start)
+
+              Row() {
+                Text("时长")
+                  .fontSize(14)
+                  .fontColor('#8F9396')
+                  .width('auto')
+                  .height('auto')
+                  .textAlign(TextAlign.Start)
+                Text(formatDuration(this.itemTransfer.media.duration))
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .width('100%')
+                  .height('auto')
+                  .layoutWeight(1)
+                  .margin({ left: 10 })
+                  .padding({ right: 15 })
+                  .textAlign(TextAlign.Start)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .width('50%')
+              .justifyContent(FlexAlign.Start)
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Start)
+
+            Row() {
+              Row() {
+                Text("演播")
+                  .fontSize(14)
+                  .fontColor('#8F9396')
+                  .width('auto')
+                  .height('auto')
+                  .textAlign(TextAlign.Start)
+                Text(this.itemTransfer.media.metadata.narratorName)
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .width('100%')
+                  .height('auto')
+                  .layoutWeight(1)
+                  .margin({ left: 10 })
+                  .padding({ right: 15 })
+                  .textAlign(TextAlign.Start)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .decoration({ type: TextDecorationType.Underline, color: Color.White })
+              }
+              .width('50%')
+              .justifyContent(FlexAlign.Start)
+
+              Row() {
+                Text("流派")
+                  .fontSize(14)
+                  .fontColor('#8F9396')
+                  .width('auto')
+                  .height('auto')
+                  .textAlign(TextAlign.Start)
+                Text(this.itemTransfer.media.metadata.genres.toString())
+                  .fontSize(14)
+                  .fontColor(Color.White)
+                  .width('100%')
+                  .height('auto')
+                  .layoutWeight(1)
+                  .margin({ left: 10 })
+                  .padding({ right: 15 })
+                  .textAlign(TextAlign.Start)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .decoration({ type: TextDecorationType.Underline, color: Color.White })
+              }
+              .width('50%')
+              .justifyContent(FlexAlign.Start)
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Start)
+
+            Row() {
+              Text("年份")
+                .fontSize(14)
+                .fontColor('#8F9396')
+                .width('auto')
+                .height('auto')
+                .textAlign(TextAlign.Start)
+              Text(this.itemTransfer.media.metadata.publishedYear)
+                .fontSize(14)
+                .fontColor(Color.White)
+                .width('100%')
+                .height('auto')
+                .layoutWeight(1)
+                .margin({ left: 10 })
+                .padding({ right: 15 })
+                .textAlign(TextAlign.Start)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('50%')
+            .justifyContent(FlexAlign.Start)
+          }
+          .margin({ top: 10 })
+          .width('100%')
+          .height(70)
+          .justifyContent(FlexAlign.SpaceBetween)
+          .alignItems(HorizontalAlign.Start)
+
+          Column() {
+            Text("\u3000\u3000" +
+            this.itemTransfer.media?.metadata.description)
               .fontSize(14)
               .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
-            Text(this.getDuration(this.itemTransfer.id))
-              .fontSize(12)
-              .fontColor('#8F9396')
-          }
-          .backgroundColor('#232323')
-          .borderRadius(5)
-          .width('100%')
-          .height(40)
-          .justifyContent(FlexAlign.SpaceEvenly)
-        }
-        .width('100%')
-        .height(92)
-        .justifyContent(FlexAlign.SpaceBetween)
-
-        Column() {
-          Row() {
-            Row() {
-              Text("作者")
-                .fontSize(14)
-                .fontColor('#8F9396')
-                .width('auto')
-                .height('auto')
-                .textAlign(TextAlign.Start)
-              Text(this.itemTransfer.media.metadata.authorName)
-                .fontSize(14)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('auto')
-                .layoutWeight(1)
-                .margin({ left: 10 })
-                .padding({ right: 15 })
-                .textAlign(TextAlign.Start)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-                .decoration({ type: TextDecorationType.Underline, color: Color.White })
-            }
-            .width('50%')
-            .justifyContent(FlexAlign.Start)
-
-            Row() {
-              Text("时长")
-                .fontSize(14)
-                .fontColor('#8F9396')
-                .width('auto')
-                .height('auto')
-                .textAlign(TextAlign.Start)
-              Text(formatDuration(this.itemTransfer.media.duration))
-                .fontSize(14)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('auto')
-                .layoutWeight(1)
-                .margin({ left: 10 })
-                .padding({ right: 15 })
-                .textAlign(TextAlign.Start)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            .width('50%')
-            .justifyContent(FlexAlign.Start)
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.Start)
-
-          Row() {
-            Row() {
-              Text("演播")
-                .fontSize(14)
-                .fontColor('#8F9396')
-                .width('auto')
-                .height('auto')
-                .textAlign(TextAlign.Start)
-              Text(this.itemTransfer.media.metadata.narratorName)
-                .fontSize(14)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('auto')
-                .layoutWeight(1)
-                .margin({ left: 10 })
-                .padding({ right: 15 })
-                .textAlign(TextAlign.Start)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-                .decoration({ type: TextDecorationType.Underline, color: Color.White })
-            }
-            .width('50%')
-            .justifyContent(FlexAlign.Start)
-
-            Row() {
-              Text("流派")
-                .fontSize(14)
-                .fontColor('#8F9396')
-                .width('auto')
-                .height('auto')
-                .textAlign(TextAlign.Start)
-              Text(this.itemTransfer.media.metadata.genres.toString())
-                .fontSize(14)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('auto')
-                .layoutWeight(1)
-                .margin({ left: 10 })
-                .padding({ right: 15 })
-                .textAlign(TextAlign.Start)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-                .decoration({ type: TextDecorationType.Underline, color: Color.White })
-            }
-            .width('50%')
-            .justifyContent(FlexAlign.Start)
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.Start)
-
-          Row() {
-            Text("年份")
-              .fontSize(14)
-              .fontColor('#8F9396')
-              .width('auto')
+              .width("100%")
               .height('auto')
-              .textAlign(TextAlign.Start)
-            Text(this.itemTransfer.media.metadata.publishedYear)
-              .fontSize(14)
-              .fontColor(Color.White)
-              .width('100%')
-              .height('auto')
-              .layoutWeight(1)
-              .margin({ left: 10 })
-              .padding({ right: 15 })
-              .textAlign(TextAlign.Start)
-              .maxLines(1)
+              .maxLines(this.descriptionLine)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
           }
-          .width('50%')
-          .justifyContent(FlexAlign.Start)
+          .margin({ top: 10 })
+          .width("100%")
+          .height(100)
         }
-        .margin({ top: 10 })
-        .width('100%')
-        .height(70)
-        .justifyContent(FlexAlign.SpaceBetween)
-        .alignItems(HorizontalAlign.Start)
-
-        Column() {
-          Text("\u3000\u3000" +
-          this.itemTransfer.media?.metadata.description)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .width("100%")
-            .height('auto')
-            .maxLines(this.descriptionLine)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .margin({ top: 10 })
-        .width("100%")
-        .height(100)
+        .width('80%')
+        .height('38%')
       }
-      .width('80%')
-      .height('38%')
+      .height('100%')
+      .width('100%')
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.SpaceEvenly)
+      .backgroundColor("#333333")
+
+      Column() {
+        Column() {
+          Text("标记为已听完")
+            .width('100%')
+            .height(60)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(18)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showMore = false
+              let upProgress: UpdateProgress = {
+                duration: this.itemTransfer.media.duration,
+                currentTime: this.itemTransfer.media.duration,
+                progress: 1,
+                isFinished: true
+              }
+              await updateProgress(this.itemTransfer.id, upProgress)
+              for (let element of this.allProgress) {
+                if (element.libraryItemId === this.itemTransfer.id) {
+                  element.currentTime = element.duration
+                  element.progress = 1
+                  element.isFinished = true
+                  break
+                }
+              }
+              this.itemProgress = this.getProgressById(this.itemTransfer.id)
+              this.itemDuration = this.getDuration(this.itemTransfer.id)
+              console.log("标记为已听完。")
+              promptAction.showToast({
+                message: '标记为已听完',
+                duration: 500
+              });
+              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+            })
+          Text("放弃进度")
+            .width('100%')
+            .height(60)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(18)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showMore = false
+              let upProgress: UpdateProgress = {
+                duration: this.itemTransfer.media.duration,
+                currentTime: 0,
+                progress: 0,
+                isFinished: false
+              }
+              await updateProgress(this.itemTransfer.id, upProgress)
+              for (let element of this.allProgress) {
+                if (element.libraryItemId === this.itemTransfer.id) {
+                  element.currentTime = 0
+                  element.progress = 0
+                  element.isFinished = false
+                  break
+                }
+              }
+              this.itemProgress = this.getProgressById(this.itemTransfer.id)
+              this.itemDuration = this.getDuration(this.itemTransfer.id)
+              console.log("放弃进度。")
+              promptAction.showToast({
+                message: '放弃进度',
+                duration: 500
+              });
+              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+            })
+        }
+        .width('80%')
+        .height('auto')
+        .borderRadius(10)
+        .backgroundColor('#333333')
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#80000000')
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.showMore = false
+      })
+      .visibility(this.showMore === true ? Visibility.Visible : Visibility.None)
     }
-    .height('100%')
     .width('100%')
-    .alignItems(HorizontalAlign.Center)
-    .justifyContent(FlexAlign.SpaceEvenly)
-    .backgroundColor("#333333")
+    .height('100%')
   }
 }

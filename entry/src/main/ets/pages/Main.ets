@@ -47,7 +47,7 @@ export default struct main {
   @State sidebarShow: boolean = false;
   @Provide @Watch('changePage') showProgressTransfer: boolean = false
   @State selectedLibrary: string = '';
-  @State selectedLibraryId: string = '';
+  @Provide selectedLibraryId: string = '';
   @State selectedLibraryIndex: number = 0;
   @State shadowRadius: number = 0;
   @State isPlaying: boolean = true
@@ -145,9 +145,7 @@ export default struct main {
   }
 
   async changePage() {
-    // if (this.PageIndexTransfer === 3 || this.PageIndexTransfer === 4) {
     this.pageIndex = this.PageIndexTransfer
-    // }
     this.startPlaying = this.startPlayingTransfer
     this.isPlaying = this.isPlayingTransfer
     this.currentItem = this.itemTransfer
