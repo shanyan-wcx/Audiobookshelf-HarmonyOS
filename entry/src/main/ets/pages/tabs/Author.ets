@@ -1,4 +1,4 @@
-import { display } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { Author } from '../../api/Interface'
 
 @Component
@@ -9,9 +9,11 @@ export default struct author {
   @State libraryId: string = ''
   @Consume authors: Author[]
   @Consume backPageIndex: number
+  @Consume sidebarShow: boolean
+  @Consume mainWindow: window.Window
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.columnsTemplate = "1fr 1fr 1fr"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -19,18 +21,16 @@ export default struct author {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr 1fr"
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.columnsTemplate = "1fr 1fr 1fr"
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
-        } else if (this.displayWidth >= 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr 1fr"
-        }
-      })
-    }
+    this.mainWindow.on('windowSizeChange', (size) => {
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.columnsTemplate = "1fr 1fr 1fr"
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
+      } else if (this.displayWidth >= 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr 1fr"
+      }
+    })
   }
 
   build() {
@@ -42,12 +42,9 @@ export default struct author {
               Image("")
                 .alt($rawfile('noprofile.jpg'))
                 .width('100%')
-                .aspectRatio(3/4)
+                .aspectRatio(3 / 4)
                 .borderRadius(10)
                 .objectFit(ImageFit.Fill)
-                .onClick(async () => {
-
-                })
               Column() {
                 Text(this.authors[index].name)
                   .fontSize(14)
@@ -55,7 +52,7 @@ export default struct author {
                   .fontWeight(FontWeight.Bold)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
-                Text(this.authors[index].numBooks+" 图书")
+                Text(this.authors[index].numBooks + " 图书")
                   .fontSize(13)
                   .fontColor(Color.White)
                   .maxLines(1)
@@ -71,6 +68,14 @@ export default struct author {
             .clip(true)
           }
           .borderRadius(10)
+          .onClick(async () => {
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
+          })
         })
       }
       .columnsTemplate(this.columnsTemplate)

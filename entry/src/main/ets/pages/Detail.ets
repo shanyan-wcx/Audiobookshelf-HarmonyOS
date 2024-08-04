@@ -1,4 +1,4 @@
-import { display, promptAction } from '@kit.ArkUI';
+import { display, window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -70,6 +70,8 @@ export default struct Detail {
   @Consume selectedLibraryId: string
   @Consume libraryItemsInProgress: LibraryItem[]
   @Consume libraryItemsFinished: LibraryItem[]
+  @Consume sidebarShow: boolean
+  @State mainWindow: window.Window | null = null
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -182,10 +184,18 @@ export default struct Detail {
     wantAgent.getWantAgent(wantAgentInfo).then((wantAgentObj: WantAgent) => {
       backgroundTaskManager.startBackgroundRunning(context,
         backgroundTaskManager.BackgroundMode.AUDIO_PLAYBACK, wantAgentObj).then(() => {
-        console.info(`长时任务启动。`);
+        console.info(`启动长时任务。`);
       }).catch((err: BusinessError) => {
-        console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
+        console.error(`启动长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
       });
+    });
+  }
+
+  async stopContinuousTask() {
+    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
+      console.info(`停止长时任务。`);
+    }).catch((err: BusinessError) => {
+      console.error(`停止长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
   }
 
@@ -369,7 +379,8 @@ export default struct Detail {
   }
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.mainWindow = await window.getLastWindow(getContext(this))
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = "80%"
       this.descriptionLine = 5
@@ -380,21 +391,19 @@ export default struct Detail {
       this.coverWidth = "280"
       this.descriptionLine = 3
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.coverWidth = "80%"
-          this.descriptionLine = 5
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.coverWidth = "280"
-          this.descriptionLine = 4
-        } else if (this.displayWidth >= 840) {
-          this.coverWidth = "280"
-          this.descriptionLine = 3
-        }
-      })
-    }
+    this.mainWindow.on('windowSizeChange', (size) => {
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.coverWidth = "80%"
+        this.descriptionLine = 5
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.coverWidth = "280"
+        this.descriptionLine = 4
+      } else if (this.displayWidth >= 840) {
+        this.coverWidth = "280"
+        this.descriptionLine = 3
+      }
+    })
   }
 
   build() {
@@ -440,6 +449,7 @@ export default struct Detail {
               .layoutWeight(1)
               .onClick(async () => {
                 this.isPlayingTransfer = true
+                await this.stopContinuousTask();
                 await this.startContinuousTask();
                 await this.avPlayer!.reset()
                 this.setAVPlayerCallback(this.avPlayer!);
@@ -448,6 +458,9 @@ export default struct Detail {
                 this.playItem = await getPlayItem(this.nowPlayingItem.id)
                 let url: string = await this.getPlayContent(this.playItem)
                 this.sessionId = this.playItem.id
+                if (this.session !== null) {
+                  this.session.destroy()
+                }
                 this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
                 console.log("创建Session。")
                 await this.setSessionCallback()
@@ -458,6 +471,12 @@ export default struct Detail {
                 this.avPlayer!.url = url
                 this.startPlayingTransfer = true
                 this.syncTime = new Date().getTime() / 1000
+                animateTo({
+                  duration: 300,
+                  curve: Curve.EaseOut,
+                }, () => {
+                  this.sidebarShow = false
+                })
               })
 
               Button({ type: ButtonType.Normal }) {
@@ -493,6 +512,12 @@ export default struct Detail {
               .height(40)
               .margin({ left: 13 })
               .onClick(() => {
+                animateTo({
+                  duration: 300,
+                  curve: Curve.EaseOut,
+                }, () => {
+                  this.sidebarShow = false
+                })
                 this.showMore = true
               })
             }
@@ -763,6 +788,12 @@ export default struct Detail {
       .justifyContent(FlexAlign.Center)
       .onClick(() => {
         this.showMore = false
+        animateTo({
+          duration: 300,
+          curve: Curve.EaseOut,
+        }, () => {
+          this.sidebarShow = false
+        })
       })
       .visibility(this.showMore === true ? Visibility.Visible : Visibility.None)
     }

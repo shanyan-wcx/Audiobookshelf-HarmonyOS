@@ -1,5 +1,4 @@
-import window from '@ohos.window';
-import { display, promptAction } from '@kit.ArkUI';
+import { display, window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -62,6 +61,7 @@ export default struct Play {
   @Consume syncTime: number
   @Consume allProgress: Progress[]
   @Consume playItem: PlayItem | null
+  @State mainWindow: window.Window | null = null
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -109,15 +109,16 @@ export default struct Play {
 
   async stopContinuousTask() {
     backgroundTaskManager.stopBackgroundRunning(context).then(() => {
-      console.info(`长时任务停止。`);
+      console.info(`停止长时任务。`);
     }).catch((err: BusinessError) => {
-      console.error(`长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
+      console.error(`停止长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
   }
 
-  aboutToAppear() {
+  async aboutToAppear() {
+    this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = "80%"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -125,18 +126,16 @@ export default struct Play {
     } else if (this.displayWidth >= 840) {
       this.coverWidth = "240"
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.coverWidth = "80%"
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.coverWidth = "280"
-        } else if (this.displayWidth >= 840) {
-          this.coverWidth = "240"
-        }
-      })
-    }
+    this.mainWindow.on('windowSizeChange', (size) => {
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.coverWidth = "80%"
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.coverWidth = "280"
+      } else if (this.displayWidth >= 840) {
+        this.coverWidth = "240"
+      }
+    })
   }
 
   build() {
@@ -392,6 +391,9 @@ export default struct Play {
         .height(240)
         .justifyContent(FlexAlign.SpaceBetween)
         .padding({ bottom: 20 })
+        .offset({
+          y: -20
+        })
       }
       .width('100%')
       .height('100%')

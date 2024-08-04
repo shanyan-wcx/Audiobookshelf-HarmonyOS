@@ -1,4 +1,4 @@
-import { display } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
@@ -32,6 +32,8 @@ export default struct library {
   @Consume showProgressTransfer: boolean
   @Consume allProgress: Progress[]
   @Consume backPageIndex: number
+  @Consume sidebarShow: boolean
+  @Consume mainWindow: window.Window
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -71,7 +73,7 @@ export default struct library {
   }
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.columnsTemplate = "1fr 1fr"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -79,18 +81,16 @@ export default struct library {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.columnsTemplate = "1fr 1fr"
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr"
-        } else if (this.displayWidth >= 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
-        }
-      })
-    }
+    this.mainWindow.on('windowSizeChange', (size) => {
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.columnsTemplate = "1fr 1fr"
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr"
+      } else if (this.displayWidth >= 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
+      }
+    })
   }
 
   build() {
@@ -113,6 +113,12 @@ export default struct library {
                       this.itemTransfer = this.libraryItems[index]
                       this.backPageIndex = 0
                       this.PageIndexTransfer = 3
+                      animateTo({
+                        duration: 300,
+                        curve: Curve.EaseOut,
+                      }, () => {
+                        this.sidebarShow = false
+                      })
                     })
                   Progress({
                     value: this.getProgressById(this.libraryItems[index].id).progress * 100,
@@ -141,8 +147,6 @@ export default struct library {
         }
         .width('100%')
         .height('100%')
-        .backgroundImage($rawfile('background.jpg'))
-        .backgroundImageSize(ImageSize.Cover)
 
         Column() {
           Loading()

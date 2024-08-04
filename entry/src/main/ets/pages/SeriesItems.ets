@@ -1,7 +1,7 @@
-import { display } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Progress, Book, Series } from '../api/Interface'
+import { LibraryItem, Progress, Series } from '../api/Interface'
 import Loading from './Loading'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -18,6 +18,8 @@ export default struct SeriesItems {
   @Consume allProgress: Progress[]
   @Consume seriesTransfer: Series
   @Consume backPageIndex: number
+  @Consume sidebarShow: boolean
+  @State mainWindow: window.Window | null = null
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -44,7 +46,9 @@ export default struct SeriesItems {
   }
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.mainWindow = await window.getLastWindow(getContext(this))
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
+    console.log("屏幕宽度",this.displayWidth)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.columnsTemplate = "1fr 1fr"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -52,18 +56,17 @@ export default struct SeriesItems {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.columnsTemplate = "1fr 1fr"
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr"
-        } else if (this.displayWidth >= 840) {
-          this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
-        }
-      })
-    }
+    this.mainWindow.on('windowSizeChange', (size) => {
+      console.log("屏幕宽度",this.displayWidth)
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.columnsTemplate = "1fr 1fr"
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr"
+      } else if (this.displayWidth >= 840) {
+        this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
+      }
+    })
   }
 
   build() {
@@ -83,8 +86,14 @@ export default struct SeriesItems {
                     .borderRadius(10)
                     .objectFit(ImageFit.Fill)
                     .onClick(async () => {
-                      for(let item of this.libraryItems){
-                        if(item.id===this.seriesTransfer.books[index].id){
+                      animateTo({
+                        duration: 300,
+                        curve: Curve.EaseOut,
+                      }, () => {
+                        this.sidebarShow = false
+                      })
+                      for (let item of this.libraryItems) {
+                        if (item.id === this.seriesTransfer.books[index].id) {
                           this.itemTransfer = item
                           break
                         }
@@ -99,7 +108,8 @@ export default struct SeriesItems {
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(this.seriesTransfer.books[index].id).progress * 100 === 100 ? Color.Green :
+                    .color(this.getProgressById(this.seriesTransfer.books[index].id).progress * 100 === 100 ?
+                    Color.Green :
                     Color.Orange)
                 }
                 .width('100%')

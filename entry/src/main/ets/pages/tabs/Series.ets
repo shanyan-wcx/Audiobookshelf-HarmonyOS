@@ -1,4 +1,4 @@
-import { display } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { Book, Series } from '../../api/Interface'
@@ -18,9 +18,11 @@ export default struct series {
   @Consume showProgressTransfer: boolean
   @Consume seriesTransfer: Series
   @Consume backPageIndex: number
+  @Consume sidebarShow: boolean
+  @Consume mainWindow: window.Window
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.columnsTemplate = "1fr"
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -28,9 +30,8 @@ export default struct series {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr"
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.mainWindow.on('windowSizeChange', (size) => {
+        this.displayWidth = px2vp(size.width)
         if (this.displayWidth >= 320 && this.displayWidth < 600) {
           this.columnsTemplate = "1fr"
         } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -39,7 +40,6 @@ export default struct series {
           this.columnsTemplate = "1fr 1fr 1fr"
         }
       })
-    }
   }
 
   build() {
@@ -93,6 +93,12 @@ export default struct series {
             this.seriesTransfer = this.series[index]
             this.backPageIndex = 0
             this.PageIndexTransfer = 4
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
           })
         })
       }

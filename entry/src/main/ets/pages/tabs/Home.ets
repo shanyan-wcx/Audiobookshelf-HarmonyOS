@@ -1,4 +1,4 @@
-import { display } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
@@ -20,6 +20,8 @@ export default struct home {
   @Consume showProgressTransfer: boolean
   @Consume allProgress: Progress[]
   @Consume libraryItems: LibraryItem[]
+  @Consume sidebarShow: boolean
+  @Consume mainWindow: window.Window
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -46,7 +48,7 @@ export default struct home {
   }
 
   async aboutToAppear() {
-    this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+    this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     if (this.displayWidth >= 320 && this.displayWidth < 600) {
       this.coverWidth = 180
     } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
@@ -54,18 +56,17 @@ export default struct home {
     } else if (this.displayWidth >= 840) {
       this.coverWidth = 220
     }
-    if (display.isFoldable() === true) {
-      display.on('foldStatusChange', (foldStatus) => {
-        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
-        if (this.displayWidth >= 320 && this.displayWidth < 600) {
-          this.coverWidth = 180
-        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
-          this.coverWidth = 170
-        } else if (this.displayWidth >= 840) {
-          this.coverWidth = 220
-        }
-      })
-    }
+    console.log("当前封面宽度", this.coverWidth)
+    this.mainWindow.on('windowSizeChange', (size) => {
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+        this.coverWidth = 180
+      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.coverWidth = 170
+      } else if (this.displayWidth >= 840) {
+        this.coverWidth = 220
+      }
+    })
   }
 
   build() {
@@ -87,6 +88,12 @@ export default struct home {
                     .onClick(async () => {
                       this.itemTransfer = item
                       this.PageIndexTransfer = 3
+                      animateTo({
+                        duration: 300,
+                        curve: Curve.EaseOut,
+                      }, () => {
+                        this.sidebarShow = false
+                      })
                     })
                   Progress({
                     value: this.getProgressById(item.id).progress * 100,
@@ -161,6 +168,12 @@ export default struct home {
                     .onClick(async () => {
                       this.itemTransfer = item
                       this.PageIndexTransfer = 3
+                      animateTo({
+                        duration: 300,
+                        curve: Curve.EaseOut,
+                      }, () => {
+                        this.sidebarShow = false
+                      })
                     })
                   Progress({
                     value: this.getProgressById(item.id).progress * 100,
@@ -221,8 +234,6 @@ export default struct home {
       }
       .width('100%')
       .height('100%')
-      .backgroundImage($rawfile('background.jpg'))
-      .backgroundImageSize(ImageSize.Cover)
 
       Column() {
         Loading()

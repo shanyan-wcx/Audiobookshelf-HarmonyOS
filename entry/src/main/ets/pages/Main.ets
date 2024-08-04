@@ -1,6 +1,5 @@
-import window from '@ohos.window';
 import { media } from '@kit.MediaKit';
-import { router, promptAction, curves } from '@kit.ArkUI';
+import { router, promptAction, curves, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
@@ -44,7 +43,7 @@ export default struct main {
   @State index: number = 0;
   @State pageIndex: number = 0;
   @Provide @Watch('changePage') PageIndexTransfer: number = this.pageIndex
-  @State sidebarShow: boolean = false;
+  @Provide sidebarShow: boolean = false;
   @Provide @Watch('changePage') showProgressTransfer: boolean = false
   @State selectedLibrary: string = '';
   @Provide selectedLibraryId: string = '';
@@ -76,6 +75,7 @@ export default struct main {
   @Provide backPageIndex: number = 0
   @Provide sessionId: string = ''
   @Provide syncTime: number = 0
+  @Provide mainWindow: window.Window | null = null
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -261,6 +261,12 @@ export default struct main {
           }
           this.pageIndex = this.backPageIndex
           this.PageIndexTransfer = this.backPageIndex
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
         })
 
         Text(this.selectedLibrary)
@@ -276,6 +282,14 @@ export default struct main {
           .borderRadius(5)
           .backgroundColor('#30cccccc')
           .bindMenu(this.bindMenuBuilder(libraries))
+          .onClick(() => {
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
+          })
       }
       .alignItems(VerticalAlign.Center)
       .height(40)
@@ -294,6 +308,14 @@ export default struct main {
           .placeholderColor('#60ffffff')
           .onSubmit((value) => {
 
+          })
+          .onClick(() => {
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
           })
       }
       .alignItems(VerticalAlign.Center)
@@ -326,6 +348,12 @@ export default struct main {
       .onClick(() => {
         this.index = index;
         this.controller.changeIndex(index);
+        animateTo({
+          duration: 300,
+          curve: Curve.EaseOut,
+        }, () => {
+          this.sidebarShow = false
+        })
       })
     } else {
       Column() {
@@ -341,6 +369,12 @@ export default struct main {
       .onClick(() => {
         this.index = index;
         this.controller.changeIndex(index);
+        animateTo({
+          duration: 300,
+          curve: Curve.EaseOut,
+        }, () => {
+          this.sidebarShow = false
+        })
       })
     }
   }
@@ -355,6 +389,7 @@ export default struct main {
   }
 
   async aboutToAppear() {
+    this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
     this.showProgressTransfer = true
     libraries = await getLibraries()
@@ -428,7 +463,12 @@ export default struct main {
         .onClick(() => {
           this.pageIndex = 0
           this.PageIndexTransfer = 0
-          this.sidebarShow = false
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
         })
 
         Row() {
@@ -450,7 +490,12 @@ export default struct main {
         .onClick(() => {
           this.pageIndex = 1
           this.PageIndexTransfer = 1
-          this.sidebarShow = false
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
         })
 
         Row() {
@@ -472,7 +517,12 @@ export default struct main {
         .onClick(() => {
           this.pageIndex = 2
           this.PageIndexTransfer = 2
-          this.sidebarShow = false
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
         })
 
         Row() {
@@ -491,7 +541,12 @@ export default struct main {
         .width("100%")
         .height(60)
         .onClick(async () => {
-          this.sidebarShow = false
+          animateTo({
+            duration: 300,
+            curve: Curve.EaseOut,
+          }, () => {
+            this.sidebarShow = false
+          })
           await getLogout()
           promptAction.showToast({
             message: '退出登录！',
@@ -515,7 +570,6 @@ export default struct main {
         offsetY: vp2px(0)
       })
 
-
       Navigation(this.pageStack) {
         Stack() {
           Tabs({
@@ -524,6 +578,8 @@ export default struct main {
           }) {
             TabContent() {
               home({ libraryId: this.selectedLibraryId })
+                .backgroundImage($rawfile('background.jpg'))
+                .backgroundImageSize(ImageSize.Cover)
             }
             .width('100%')
             .height('100%')
@@ -531,6 +587,8 @@ export default struct main {
 
             TabContent() {
               library({ libraryId: this.selectedLibraryId })
+                .backgroundImage($rawfile('background.jpg'))
+                .backgroundImageSize(ImageSize.Cover)
             }
             .width('100%')
             .height('100%')
@@ -541,6 +599,8 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
+            .backgroundImage($rawfile('background.jpg'))
+            .backgroundImageSize(ImageSize.Cover)
             .tabBar(this.TabBuilder("系列", 2, $rawfile('tabs/series.png')))
 
             TabContent() {
@@ -548,6 +608,7 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
+            .backgroundColor("#333333")
             .tabBar(this.TabBuilder("收藏", 3, $rawfile('tabs/collections.png')))
 
             TabContent() {
@@ -555,6 +616,7 @@ export default struct main {
             }
             .width('100%')
             .height('100%')
+            .backgroundColor("#333333")
             .tabBar(this.TabBuilder("作者", 4, $rawfile('tabs/authors.png')))
           }
           .width("100%")
@@ -602,7 +664,8 @@ export default struct main {
           Column() {
             SeriesItems()
           }
-          .backgroundColor("#333333")
+          .backgroundImage($rawfile('background.jpg'))
+          .backgroundImageSize(ImageSize.Cover)
           .width("100%")
           .height('100%')
           .visibility(this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
@@ -738,6 +801,12 @@ export default struct main {
               this.showPlayTransfer = false
             }
             this.showPlayTransfer = true;
+            animateTo({
+              duration: 300,
+              curve: Curve.EaseOut,
+            }, () => {
+              this.sidebarShow = false
+            })
           })
           .visibility(this.startPlayingTransfer === true ? Visibility.Visible : Visibility.Hidden)
           .transition(TransitionEffect.translate({ y: 100 }).animation({ curve: curves.springMotion(0.6, 1) }))
@@ -749,7 +818,14 @@ export default struct main {
       .titleMode(NavigationTitleMode.Mini)
       .hideBackButton(true)
       .backgroundColor('#232323')
-
+      .onClick(() => {
+        animateTo({
+          duration: 300,
+          curve: Curve.EaseOut,
+        }, () => {
+          this.sidebarShow = false
+        })
+      })
     }
     .width("100%")
     .height('100%')
@@ -766,11 +842,13 @@ export default struct main {
     .sideBarPosition(SideBarPosition.End)
     .onChange((show: boolean) => {
       if (show === true) {
-        this.shadowRadius = 50
-        this.sidebarShow = true
+          this.shadowRadius = 50
+          this.sidebarShow = true
       } else {
-        this.shadowRadius = 0
-        this.sidebarShow = false
+        setTimeout(() => {
+          this.shadowRadius = 0
+          this.sidebarShow = false
+        }, 300)
       }
     })
   }
