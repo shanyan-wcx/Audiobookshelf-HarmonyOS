@@ -1,4 +1,4 @@
-import { display, window, promptAction } from '@kit.ArkUI';
+import { window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -13,6 +13,7 @@ import {
   getPlayItem,
   updateProgress,
   syncSession,
+  closeSession,
   getLibrarieItemsFinished,
   getLibrarieItemsInProgress
 } from '../api/Api'
@@ -417,6 +418,33 @@ export default struct Detail {
     })
   }
 
+  async aboutToDisappear(){
+    let currentTime: number = 0
+    for (let element of this.allProgress) {
+      if (element.libraryItemId === this.nowPlayingItem.id) {
+        currentTime = element.currentTime
+        break
+      }
+    }
+    let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+    let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
+    let updateSession: UpdateSession = {
+      deviceInfo: {
+        id: '00000000',
+        userId: this.playItem!.userId,
+        deviceName: deviceInfo.productModel,
+        clientName: 'Abs-HarmonyOS',
+        clientVersion: bundleInfo.versionName
+      },
+      mediaPlayer: "avPlayer",
+      currentTime: currentTime,
+      timeListened: new Date().getTime() / 1000 - this.syncTime
+    }
+    console.log("会话当前时间", updateSession.currentTime)
+    console.log("会话汇报间隔", updateSession.timeListened)
+    await closeSession(this.sessionId, updateSession)
+  }
+
   build() {
     Stack() {
       Column() {
@@ -461,6 +489,30 @@ export default struct Detail {
               .layoutWeight(1)
               .onClick(async () => {
                 if (this.startPlayingTransfer === true) {
+                  let currentTime: number = 0
+                  for (let element of this.allProgress) {
+                    if (element.libraryItemId === this.nowPlayingItem.id) {
+                      currentTime = element.currentTime
+                      break
+                    }
+                  }
+                  let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+                  let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
+                  let updateSession: UpdateSession = {
+                    deviceInfo: {
+                      id: '00000000',
+                      userId: this.playItem!.userId,
+                      deviceName: deviceInfo.productModel,
+                      clientName: 'Abs-HarmonyOS',
+                      clientVersion: bundleInfo.versionName
+                    },
+                    mediaPlayer: "avPlayer",
+                    currentTime: currentTime,
+                    timeListened: new Date().getTime() / 1000 - this.syncTime
+                  }
+                  console.log("会话当前时间", updateSession.currentTime)
+                  console.log("会话汇报间隔", updateSession.timeListened)
+                  await closeSession(this.sessionId, updateSession)
                   await this.session!.destroy()
                   await this.stopContinuousTask();
                 }
