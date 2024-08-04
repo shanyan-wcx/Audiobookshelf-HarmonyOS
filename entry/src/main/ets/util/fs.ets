@@ -75,11 +75,13 @@ export function clearCovers() {
   console.log("清空封面")
 }
 
-export function getPixelMap(imgPath:string): PixelMap {
-  const imageSource : image.ImageSource = image.createImageSource(imgPath);
-  let decodingOptions : image.DecodingOptions = {
-    editable: true,
-    desiredPixelFormat: 3,
+export function getPixelMap(imgPath: string): PixelMap {
+  const imageSource: image.ImageSource = image.createImageSource(imgPath);
+  let decodingOptions: image.DecodingOptions = {
+    desiredSize: {
+      width: 1024,
+      height: 1024
+    },
   }
   let pixelMap = imageSource.createPixelMapSync(decodingOptions)
   return pixelMap

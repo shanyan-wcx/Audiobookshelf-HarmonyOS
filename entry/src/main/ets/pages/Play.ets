@@ -385,6 +385,7 @@ export default struct Play {
             })
           }
           .width('100%')
+          .margin({ top: 10 })
           .justifyContent(FlexAlign.SpaceBetween)
         }
         .width('80%')

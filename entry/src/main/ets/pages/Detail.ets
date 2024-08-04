@@ -459,7 +459,7 @@ export default struct Detail {
                 let url: string = await this.getPlayContent(this.playItem)
                 this.sessionId = this.playItem.id
                 if (this.session !== null) {
-                  this.session.destroy()
+                  await this.session.destroy()
                 }
                 this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
                 console.log("创建Session。")

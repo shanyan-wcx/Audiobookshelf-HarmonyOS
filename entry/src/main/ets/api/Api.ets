@@ -208,7 +208,7 @@ export async function getCover(itemId: string) {
   const api: Axios = createApi()
   try {
     const response: AxiosResponse =
-      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover?format=jpeg`,
+      await api.get<string, AxiosResponse<string>, null>(`/api/items/${itemId}/cover?format=jpeg&width=1024`,
         {
           params: { responseType: 'arraybuffer' },
           timeout: 10000
