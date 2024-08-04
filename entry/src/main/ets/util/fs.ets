@@ -77,12 +77,6 @@ export function clearCovers() {
 
 export function getPixelMap(imgPath: string): PixelMap {
   const imageSource: image.ImageSource = image.createImageSource(imgPath);
-  let decodingOptions: image.DecodingOptions = {
-    desiredSize: {
-      width: 1024,
-      height: 1024
-    },
-  }
-  let pixelMap = imageSource.createPixelMapSync(decodingOptions)
+  let pixelMap = imageSource.createPixelMapSync()
   return pixelMap
 }
