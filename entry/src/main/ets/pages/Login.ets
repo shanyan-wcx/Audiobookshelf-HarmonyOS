@@ -51,6 +51,24 @@ export default struct login {
       this.loginWidth = '45%'
       this.loginTop = '10%'
     }
+    if (display.isFoldable() === true) {
+      display.on('foldStatusChange', (foldStatus) => {
+        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+        if (this.displayWidth >= 320 && this.displayWidth < 600) {
+          this.loginHeight = '45%'
+          this.loginWidth = '85%'
+          this.loginTop = '45%'
+        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+          this.loginHeight = '50%'
+          this.loginWidth = '60%'
+          this.loginTop = '20%'
+        } else if (this.displayWidth >= 840) {
+          this.loginHeight = '60%'
+          this.loginWidth = '45%'
+          this.loginTop = '10%'
+        }
+      })
+    }
     if (this.params.firstLogin === true) {
       config = readConfig(config)
       if (config.rememberLoginInfo === true) {

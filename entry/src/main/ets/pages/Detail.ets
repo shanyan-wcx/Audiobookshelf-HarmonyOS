@@ -380,6 +380,21 @@ export default struct Detail {
       this.coverWidth = "280"
       this.descriptionLine = 3
     }
+    if (display.isFoldable() === true) {
+      display.on('foldStatusChange', (foldStatus) => {
+        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+        if (this.displayWidth >= 320 && this.displayWidth < 600) {
+          this.coverWidth = "80%"
+          this.descriptionLine = 5
+        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+          this.coverWidth = "280"
+          this.descriptionLine = 4
+        } else if (this.displayWidth >= 840) {
+          this.coverWidth = "280"
+          this.descriptionLine = 3
+        }
+      })
+    }
   }
 
   build() {

@@ -125,6 +125,18 @@ export default struct Play {
     } else if (this.displayWidth >= 840) {
       this.coverWidth = "240"
     }
+    if (display.isFoldable() === true) {
+      display.on('foldStatusChange', (foldStatus) => {
+        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+        if (this.displayWidth >= 320 && this.displayWidth < 600) {
+          this.coverWidth = "80%"
+        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+          this.coverWidth = "280"
+        } else if (this.displayWidth >= 840) {
+          this.coverWidth = "240"
+        }
+      })
+    }
   }
 
   build() {

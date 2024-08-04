@@ -25,6 +25,18 @@ export default struct collection {
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr"
     }
+    if (display.isFoldable() === true) {
+      display.on('foldStatusChange', (foldStatus) => {
+        this.displayWidth = px2vp(display.getDefaultDisplaySync().width)
+        if (this.displayWidth >= 320 && this.displayWidth < 600) {
+          this.columnsTemplate = "1fr"
+        } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+          this.columnsTemplate = "1fr 1fr"
+        } else if (this.displayWidth >= 840) {
+          this.columnsTemplate = "1fr 1fr 1fr"
+        }
+      })
+    }
   }
 
   build() {
