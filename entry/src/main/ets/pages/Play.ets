@@ -35,6 +35,7 @@ function formatDuration(seconds: number): string {
 @Component
 export default struct Play {
   @State displayWidth: number = 0
+  @State displayHeight: number = 0
   @State statusBarHeight: number = 0
   @State coverWidth: string = "20%"
   @State showChapters: boolean = false
@@ -62,6 +63,7 @@ export default struct Play {
   @Consume allProgress: Progress[]
   @Consume playItem: PlayItem | null
   @State mainWindow: window.Window | null = null
+  @State showCover: boolean = true
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -119,21 +121,32 @@ export default struct Play {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    this.displayHeight = px2vp(this.mainWindow.getWindowProperties().windowRect.height)
+    console.log("屏幕高度",this.displayHeight)
+    if (this.displayHeight < 700) {
+      this.showCover = false
+    } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.coverWidth = "80%"
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.coverWidth = "280"
     } else if (this.displayWidth >= 840) {
       this.coverWidth = "240"
     }
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      this.displayHeight = px2vp(size.height)
+      console.log("屏幕高度",this.displayHeight)
+      if (this.displayHeight < 700) {
+        this.showCover = false
+      } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.coverWidth = "80%"
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.showCover = true
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.coverWidth = "280"
+        this.showCover = true
       } else if (this.displayWidth >= 840) {
         this.coverWidth = "240"
+        this.showCover = true
       }
     })
   }
@@ -179,6 +192,7 @@ export default struct Play {
           .borderRadius(10)
           .objectFit(ImageFit.Fill)
           .margin({ top: 20 })
+          .visibility(this.showCover === true ? Visibility.Visible : Visibility.None)
         Column() {
           Text(this.playTitle)
             .fontSize(28)

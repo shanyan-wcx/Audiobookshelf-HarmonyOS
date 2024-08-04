@@ -37,6 +37,7 @@ function formatDuration(seconds: number): string {
 @Component
 export default struct Detail {
   @State displayWidth: number = 0
+  @State displayHeight: number = 0
   @Consume startPlayingTransfer: boolean
   @State coverWidth: string = "20%"
   @State descriptionLine: number = 0
@@ -72,6 +73,7 @@ export default struct Detail {
   @Consume libraryItemsFinished: LibraryItem[]
   @Consume sidebarShow: boolean
   @State mainWindow: window.Window | null = null
+  @State showCover: boolean = true
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -207,7 +209,7 @@ export default struct Detail {
       this.elapsedTime += 100
       this.nowPlayedTime = time / 1000
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-      if (this.elapsedTime >= 5000) {
+      if (this.elapsedTime >= 5500) {
         let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
         let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
         let upProgress: UpdateProgress = {
@@ -381,27 +383,36 @@ export default struct Detail {
   async aboutToAppear() {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    this.displayHeight = px2vp(this.mainWindow.getWindowProperties().windowRect.height)
+    if (this.displayHeight < 700) {
+      this.showCover = false
+    } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.coverWidth = "80%"
       this.descriptionLine = 5
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.coverWidth = "280"
-      this.descriptionLine = 4
+      this.descriptionLine = 3
     } else if (this.displayWidth >= 840) {
       this.coverWidth = "280"
       this.descriptionLine = 3
     }
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      this.displayHeight = px2vp(size.height)
+      if (this.displayHeight < 700) {
+        this.showCover = false
+      } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.coverWidth = "80%"
         this.descriptionLine = 5
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+        this.showCover = true
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.coverWidth = "280"
-        this.descriptionLine = 4
+        this.descriptionLine = 3
+        this.showCover = true
       } else if (this.displayWidth >= 840) {
         this.coverWidth = "280"
         this.descriptionLine = 3
+        this.showCover = true
       }
     })
   }
@@ -417,6 +428,7 @@ export default struct Detail {
           .borderRadius(10)
           .objectFit(ImageFit.Fill)
           .margin({ top: 20 })
+          .visibility(this.showCover === true ? Visibility.Visible : Visibility.None)
         Column() {
           Text(this.itemTransfer.media.metadata.title)
             .fontSize(28)
@@ -448,8 +460,11 @@ export default struct Detail {
               .height(40)
               .layoutWeight(1)
               .onClick(async () => {
+                if (this.startPlayingTransfer === true) {
+                  await this.session!.destroy()
+                  await this.stopContinuousTask();
+                }
                 this.isPlayingTransfer = true
-                await this.stopContinuousTask();
                 await this.startContinuousTask();
                 await this.avPlayer!.reset()
                 this.setAVPlayerCallback(this.avPlayer!);
@@ -458,9 +473,6 @@ export default struct Detail {
                 this.playItem = await getPlayItem(this.nowPlayingItem.id)
                 let url: string = await this.getPlayContent(this.playItem)
                 this.sessionId = this.playItem.id
-                if (this.session !== null) {
-                  await this.session.destroy()
-                }
                 this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
                 console.log("创建Session。")
                 await this.setSessionCallback()

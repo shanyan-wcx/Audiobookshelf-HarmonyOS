@@ -39,11 +39,11 @@ export default struct login {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.loginHeight = '45%'
       this.loginWidth = '85%'
       this.loginTop = '45%'
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.loginHeight = '50%'
       this.loginWidth = '60%'
       this.loginTop = '20%'
@@ -54,11 +54,11 @@ export default struct login {
     }
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.loginHeight = '45%'
         this.loginWidth = '85%'
         this.loginTop = '45%'
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.loginHeight = '50%'
         this.loginWidth = '60%'
         this.loginTop = '20%'

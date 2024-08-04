@@ -49,9 +49,9 @@ export default struct home {
 
   async aboutToAppear() {
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.coverWidth = 180
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.coverWidth = 170
     } else if (this.displayWidth >= 840) {
       this.coverWidth = 220
@@ -59,9 +59,9 @@ export default struct home {
     console.log("当前封面宽度", this.coverWidth)
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.coverWidth = 180
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.coverWidth = 170
       } else if (this.displayWidth >= 840) {
         this.coverWidth = 220

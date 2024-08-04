@@ -20,18 +20,18 @@ export default struct collection {
 
   async aboutToAppear() {
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.columnsTemplate = "1fr"
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.columnsTemplate = "1fr 1fr"
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr"
     }
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.columnsTemplate = "1fr"
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.columnsTemplate = "1fr 1fr"
       } else if (this.displayWidth >= 840) {
         this.columnsTemplate = "1fr 1fr 1fr"

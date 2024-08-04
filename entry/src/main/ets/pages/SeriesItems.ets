@@ -48,20 +48,18 @@ export default struct SeriesItems {
   async aboutToAppear() {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
-    console.log("屏幕宽度",this.displayWidth)
-    if (this.displayWidth >= 320 && this.displayWidth < 600) {
+    if (this.displayWidth >= 320 && this.displayWidth < 550) {
       this.columnsTemplate = "1fr 1fr"
-    } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+    } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr"
     } else if (this.displayWidth >= 840) {
       this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
     }
     this.mainWindow.on('windowSizeChange', (size) => {
-      console.log("屏幕宽度",this.displayWidth)
       this.displayWidth = px2vp(size.width)
-      if (this.displayWidth >= 320 && this.displayWidth < 600) {
+      if (this.displayWidth >= 320 && this.displayWidth < 550) {
         this.columnsTemplate = "1fr 1fr"
-      } else if (this.displayWidth >= 600 && this.displayWidth < 840) {
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
         this.columnsTemplate = "1fr 1fr 1fr 1fr"
       } else if (this.displayWidth >= 840) {
         this.columnsTemplate = "1fr 1fr 1fr 1fr 1fr"
