@@ -5,13 +5,26 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\21633\\.ohos\\config\\default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.cer",
-          "storePassword": "0000001BA5CA848ADC0C5AD452A58E9AAB32845C3F73EE9266439EA6013FD4E05838384C4366C4AE2505FB",
+          "certpath": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.cer",
+          "storePassword": "0000001B43CDEE8BC8875A3196228AD7FE5060AFCD8710CE8CA6ED80B3EC48FCEA0F65019182F01D5D3337",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BC8E799AB1BB8EC4C35F4387AF23B1A1E90F002A4A59519B90C7CE896CC0C0685DE11DCD13CD911",
-          "profile": "C:\\Users\\21633\\.ohos\\config\\default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p7b",
+          "keyPassword": "0000001B570A6666C791F0FA77355C4977921AE16C051B79424B0BDEBFA70096BCE6BE64ADC5EEAF795BA3",
+          "profile": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\21633\\.ohos\\config\\default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p12"
+          "storeFile": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p12"
+        }
+      },
+      {
+        "name": "faxing",
+        "type": "HarmonyOS",
+        "material": {
+          "storePassword": "000000183F7F7AC643EEE91E6CCAAB992048FB551DB087FD186EFB70D8C18B6322A34008EC697703",
+          "certpath": "C:/Users/21633/Desktop/audiobookshelf-key/audiobookshelf.cer",
+          "keyAlias": "audiobookshelf",
+          "keyPassword": "00000018B79E20716E31CE0F0BCF85AA75DD3D2439163BFA6ABA4EB167D8406711EBFB61626F5746",
+          "profile": "C:/Users/21633/Desktop/audiobookshelf-key/AudiobookshelfRelease.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:/Users/21633/Desktop/audiobookshelf-key/audiobookshelf.p12"
         }
       }
     ],

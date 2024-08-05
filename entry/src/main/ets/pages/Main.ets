@@ -644,7 +644,7 @@ export default struct main {
               Text('v' + bundleInfo.versionName)
                 .fontSize(11)
                 .fontColor(Color.Gray)
-              Text('浙ICP备XXXXXXXXXX号')
+              Text('浙ICP备2020037771号-3A')
                 .fontSize(11)
                 .fontColor(Color.Gray)
                 .maxLines(1)
