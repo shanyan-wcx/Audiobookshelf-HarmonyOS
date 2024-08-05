@@ -36,7 +36,7 @@ export default struct author {
   build() {
     Column() {
       Grid() {
-        ForEach(this.authors, (item: number, index) => {
+        ForEach(this.authors, (item: Author, index) => {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
               Image("")
@@ -46,13 +46,13 @@ export default struct author {
                 .borderRadius(10)
                 .objectFit(ImageFit.Fill)
               Column() {
-                Text(this.authors[index].name)
+                Text(item.name)
                   .fontSize(14)
                   .fontColor(Color.White)
                   .fontWeight(FontWeight.Bold)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
-                Text(this.authors[index].numBooks + " 图书")
+                Text(item.numBooks + " 图书")
                   .fontSize(13)
                   .fontColor(Color.White)
                   .maxLines(1)

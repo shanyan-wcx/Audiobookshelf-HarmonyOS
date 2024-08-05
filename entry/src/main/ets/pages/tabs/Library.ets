@@ -98,11 +98,11 @@ export default struct library {
       Stack() {
         Column() {
           Grid() {
-            ForEach(this.libraryItems, (item: number, index) => {
+            ForEach(this.libraryItems, (item: LibraryItem, index) => {
               GridItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
                   Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${this.libraryItems[index].id}.jpg`) :
+                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
                   $rawfile('nocover.jpg'))
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
@@ -110,7 +110,7 @@ export default struct library {
                     .borderRadius(10)
                     .objectFit(ImageFit.Fill)
                     .onClick(async () => {
-                      this.itemTransfer = this.libraryItems[index]
+                      this.itemTransfer = item
                       this.backPageIndex = 0
                       this.PageIndexTransfer = 3
                       animateTo({
@@ -121,13 +121,13 @@ export default struct library {
                       })
                     })
                   Progress({
-                    value: this.getProgressById(this.libraryItems[index].id).progress * 100,
+                    value: this.getProgressById(item.id).progress * 100,
                     total: 100,
                     type: ProgressType.Linear
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(this.libraryItems[index].id).progress * 100 === 100 ? Color.Green :
+                    .color(this.getProgressById(item.id).progress * 100 === 100 ? Color.Green :
                     Color.Orange)
                 }
                 .width('100%')

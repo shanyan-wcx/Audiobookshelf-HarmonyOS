@@ -45,12 +45,12 @@ export default struct series {
   build() {
     Column() {
       Grid() {
-        ForEach(this.series, (item: number, index) => {
+        ForEach(this.series, (item: Series, index) => {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
-              ForEach(this.series[index].books.reverse(), (item: Book, index2) => {
+              ForEach(item.books.reverse(), (item2: Book, index2) => {
                 Image(this.showProgressTransfer === false ?
-                fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
+                fileUri.getUriFromPath(filesDir + `/covers/${item2.id}.jpg`) :
                 $rawfile('nocover.jpg'))
                   .alt($rawfile('nocover.jpg'))
                   .height('100%')
@@ -61,7 +61,7 @@ export default struct series {
                     this.imageWidth = new Number(newValue.width).valueOf()
                     this.imageHeight = new Number(newValue.height).valueOf()
                   })
-                  .position({ right: index2 * (this.imageWidth / (this.series[index].books.length - 1)) })
+                  .position({ right: index2 * (this.imageWidth / (item.books.length - 1)) })
                   .shadow({
                     offsetX: 10,
                     offsetY: 0,
@@ -70,7 +70,7 @@ export default struct series {
                   })
               })
               Column() {
-                Text(this.series[index].name)
+                Text(item.name)
                   .fontColor('#F2E4C1')
                   .fontSize(16)
                   .maxLines(1)
@@ -90,7 +90,7 @@ export default struct series {
           .borderRadius(10)
           .backgroundColor("#cccccc")
           .onClick(async () => {
-            this.seriesTransfer = this.series[index]
+            this.seriesTransfer = item
             this.backPageIndex = 0
             this.PageIndexTransfer = 4
             animateTo({

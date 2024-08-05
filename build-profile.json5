@@ -5,23 +5,10 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.cer",
-          "storePassword": "0000001B43CDEE8BC8875A3196228AD7FE5060AFCD8710CE8CA6ED80B3EC48FCEA0F65019182F01D5D3337",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B570A6666C791F0FA77355C4977921AE16C051B79424B0BDEBFA70096BCE6BE64ADC5EEAF795BA3",
-          "profile": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p7b",
-          "signAlg": "SHA256withECDSA",
-          "storeFile": "C:/Users/21633/.ohos/config/default_Audiobookshelf_nWYTr0IApXbxytls08iCSqLiB0c-Bjaw-hzd0rAaqxc=.p12"
-        }
-      },
-      {
-        "name": "faxing",
-        "type": "HarmonyOS",
-        "material": {
-          "storePassword": "000000183F7F7AC643EEE91E6CCAAB992048FB551DB087FD186EFB70D8C18B6322A34008EC697703",
+          "storePassword": "000000188B2B2948BDFA502D4CDFB469DD978375948F8CFBA649454AA1DA5054C7E573E11F6D9BA7",
           "certpath": "C:/Users/21633/Desktop/audiobookshelf-key/audiobookshelf.cer",
           "keyAlias": "audiobookshelf",
-          "keyPassword": "00000018B79E20716E31CE0F0BCF85AA75DD3D2439163BFA6ABA4EB167D8406711EBFB61626F5746",
+          "keyPassword": "0000001822260DF28E16525888CC0C743E727FF610C56B65CE53EC6B9E8BA0A7F3222848757E47BE",
           "profile": "C:/Users/21633/Desktop/audiobookshelf-key/AudiobookshelfRelease.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:/Users/21633/Desktop/audiobookshelf-key/audiobookshelf.p12"

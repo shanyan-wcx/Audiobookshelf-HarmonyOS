@@ -239,6 +239,8 @@ export default struct main {
               this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
               this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
               this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              this.series = await getSeries(this.selectedLibraryId)
+              this.authors = await getAuthors(this.selectedLibraryId)
               await Promise.all(this.libraryItems.map(async (element) => {
                 let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
                 if (coverStatus === false) {
