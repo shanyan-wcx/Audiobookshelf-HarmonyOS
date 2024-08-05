@@ -2,11 +2,10 @@ import { window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
-import { BusinessError } from '@kit.BasicServicesKit';
+import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
-import { deviceInfo } from '@kit.BasicServicesKit';
 import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress, UpdateSession } from '../api/Interface'
 import {
   getItem,
@@ -75,6 +74,8 @@ export default struct Detail {
   @Consume sidebarShow: boolean
   @State mainWindow: window.Window | null = null
   @State showCover: boolean = true
+  @Consume speed: number
+  @Consume sleepTime: number
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -209,6 +210,14 @@ export default struct Detail {
     avPlayer.on('timeUpdate', async (time: number) => {
       this.elapsedTime += 100
       this.nowPlayedTime = time / 1000
+      if (this.sleepTime > 0 && this.isPlayingTransfer === true) {
+        this.sleepTime -= 0.1
+        if (this.sleepTime <= 0) {
+          this.avPlayer!.pause()
+          this.isPlayingTransfer = false
+          this.sleepTime = 0
+        }
+      }
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
       if (this.elapsedTime >= 5500) {
         let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
@@ -312,6 +321,7 @@ export default struct Detail {
           break;
         case 'stopped':
           console.info('播放器停止。');
+          this.sleepTime = 0
           await avPlayer.reset();
           break;
         case 'released':
@@ -416,33 +426,6 @@ export default struct Detail {
         this.showCover = true
       }
     })
-  }
-
-  async aboutToDisappear(){
-    let currentTime: number = 0
-    for (let element of this.allProgress) {
-      if (element.libraryItemId === this.nowPlayingItem.id) {
-        currentTime = element.currentTime
-        break
-      }
-    }
-    let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
-    let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
-    let updateSession: UpdateSession = {
-      deviceInfo: {
-        id: '00000000',
-        userId: this.playItem!.userId,
-        deviceName: deviceInfo.productModel,
-        clientName: 'Abs-HarmonyOS',
-        clientVersion: bundleInfo.versionName
-      },
-      mediaPlayer: "avPlayer",
-      currentTime: currentTime,
-      timeListened: new Date().getTime() / 1000 - this.syncTime
-    }
-    console.log("会话当前时间", updateSession.currentTime)
-    console.log("会话汇报间隔", updateSession.timeListened)
-    await closeSession(this.sessionId, updateSession)
   }
 
   build() {

@@ -5,7 +5,7 @@ import { webview } from '@kit.ArkWeb';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
-import { BusinessError } from '@kit.BasicServicesKit';
+import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { readConfig, writeConfig } from '../util/fs'
 import {
   getLogout,
@@ -16,9 +16,20 @@ import {
   getLibrarieItemsInProgress,
   getLibrarieItemsFinished,
   getAuthors,
-  getSeries
+  getSeries,
+  closeSession
 } from '../api/Api'
-import { Library, LibraryItem, Chapter, Progress, Track, Series, Author, PlayItem } from '../api/Interface'
+import {
+  Library,
+  LibraryItem,
+  Chapter,
+  Progress,
+  Track,
+  Series,
+  Author,
+  PlayItem,
+  UpdateSession
+} from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
 import author from './tabs/Author'
@@ -82,6 +93,8 @@ export default struct main {
   @Provide backPageIndex: number = 0
   @Provide sessionId: string = ''
   @Provide syncTime: number = 0
+  @Provide speed: number = 1
+  @Provide sleepTime: number = 0
   @Provide @Watch('changeSetting') jumpTime: number = 10
   @Provide mainWindow: window.Window | null = null
   @State currentItem: LibraryItem = {
@@ -433,6 +446,33 @@ export default struct main {
     let config = readConfig()
     this.jumpTime = config.jumpTime
     this.showProgressTransfer = false
+  }
+
+  async aboutToDisappear() {
+    let currentTime: number = 0
+    for (let element of this.allProgress) {
+      if (element.libraryItemId === this.nowPlayingItem.id) {
+        currentTime = element.currentTime
+        break
+      }
+    }
+    let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+    let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
+    let updateSession: UpdateSession = {
+      deviceInfo: {
+        id: '00000000',
+        userId: this.playItem!.userId,
+        deviceName: deviceInfo.productModel,
+        clientName: 'Abs-HarmonyOS',
+        clientVersion: bundleInfo.versionName
+      },
+      mediaPlayer: "avPlayer",
+      currentTime: currentTime,
+      timeListened: new Date().getTime() / 1000 - this.syncTime
+    }
+    console.log("会话当前时间", updateSession.currentTime)
+    console.log("会话汇报间隔", updateSession.timeListened)
+    await closeSession(this.sessionId, updateSession)
   }
 
   onBackPress() {

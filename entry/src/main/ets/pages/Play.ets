@@ -1,4 +1,4 @@
-import { display, window, promptAction } from '@kit.ArkUI';
+import { display, window, promptAction, curves } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -9,6 +9,7 @@ import { bundleManager } from '@kit.AbilityKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { LibraryItem, Chapter, Track, UpdateSession, Progress, PlayItem } from '../api/Interface'
 import { closeSession } from '../api/Api'
+import { radio } from '@kit.TelephonyKit';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -32,6 +33,20 @@ function formatDuration(seconds: number): string {
   return formattedTime;
 }
 
+function formatSleepTime(seconds: number): string {
+  if (seconds < 60) {
+    const roundedSeconds = Math.floor(seconds);
+    return `${roundedSeconds} sec`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} min`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours} hr ${minutes} min`;
+  }
+}
+
 @Component
 export default struct Play {
   @State displayWidth: number = 0
@@ -40,6 +55,9 @@ export default struct Play {
   @State coverWidth: string = "20%"
   @State showChapters: boolean = false
   @State showMenu: boolean = false
+  @State showSleep: boolean = false
+  @State showSpeed: boolean = false
+  @State showBookmark: boolean = false
   @Consume showPlayTransfer: boolean
   @Consume isPlayingTransfer: boolean
   @Consume startPlayingTransfer: boolean
@@ -64,7 +82,10 @@ export default struct Play {
   @Consume playItem: PlayItem | null
   @State mainWindow: window.Window | null = null
   @State showCover: boolean = true
+  @State speedValue: number = 0
   @Consume jumpTime: number
+  @Consume speed: number
+  @Consume sleepTime: number
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -168,6 +189,22 @@ export default struct Play {
           .onClick(() => {
             this.showPlayTransfer = false
           })
+
+          Row() {
+            Text("睡眠定时")
+              .fontSize(20)
+              .fontColor(Color.White)
+              .margin({ right: 10 })
+            Text(formatSleepTime(this.sleepTime))
+              .fontSize(20)
+              .fontColor(Color.White)
+          }
+          .width('auto')
+          .height('50')
+          .padding({ left: 15, right: 15 })
+          .borderRadius(10)
+          .backgroundColor('#75000000')
+          .visibility(this.sleepTime > 0 ? Visibility.Visible : Visibility.None)
 
           Button({ type: ButtonType.Circle }) {
             Image($rawfile('more.png'))
@@ -306,11 +343,11 @@ export default struct Play {
 
             Button({ type: ButtonType.Circle }) {
               Image(this.jumpTime === 10 ? $rawfile('forward_10.png') : $rawfile('forward_30.png'))
-                .width(40)
-                .height(40)
+                .width(45)
+                .height(45)
             }
-            .width(55)
-            .height(55)
+            .width(60)
+            .height(60)
             .margin({ left: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
@@ -368,6 +405,9 @@ export default struct Play {
             .width(35)
             .height(35)
             .backgroundColor('#00000000')
+            .onClick(() => {
+              this.showBookmark = true
+            })
 
             Button({ type: ButtonType.Circle }) {
               Image($rawfile('speed.png'))
@@ -377,6 +417,9 @@ export default struct Play {
             .width(35)
             .height(35)
             .backgroundColor('#00000000')
+            .onClick(() => {
+              this.showSpeed = true
+            })
 
             Button({ type: ButtonType.Circle }) {
               Image($rawfile('sleep.png'))
@@ -386,6 +429,9 @@ export default struct Play {
             .width(35)
             .height(35)
             .backgroundColor('#00000000')
+            .onClick(() => {
+              this.showSleep = true
+            })
 
             Button({ type: ButtonType.Circle }) {
               Image($rawfile('list2.png'))
@@ -420,52 +466,81 @@ export default struct Play {
 
       Column() {
         Column() {
-          Text("关闭播放器")
-            .width('100%')
-            .height(60)
-            .textAlign(TextAlign.Center)
-            .border({
-              radius: 10
-            })
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontSize(24)
-            .fontColor(Color.White)
-            .backgroundColor('#333333')
-            .onClick(async () => {
-              this.showMenu = false
-              this.isPlayingTransfer = false
-              this.showPlayTransfer = false
-              this.startPlayingTransfer = false
-              this.avPlayer!.stop()
-              await this.stopContinuousTask();
-              await this.session!.destroy()
-              console.log("Session已销毁。")
-              let currentTime: number = 0
-              for (let element of this.allProgress) {
-                if (element.libraryItemId === this.nowPlayingItem.id) {
-                  currentTime = element.currentTime
-                  break
+          Column() {
+            Text("关闭播放器")
+              .width('100%')
+              .height(60)
+              .textAlign(TextAlign.Center)
+              .border({
+                radius: 10
+              })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontSize(24)
+              .fontColor(Color.White)
+              .backgroundColor('#333333')
+              .onClick(async () => {
+                this.showMenu = false
+                this.isPlayingTransfer = false
+                this.showPlayTransfer = false
+                this.startPlayingTransfer = false
+                this.avPlayer!.stop()
+                await this.stopContinuousTask();
+                await this.session!.destroy()
+                console.log("Session已销毁。")
+                let currentTime: number = 0
+                for (let element of this.allProgress) {
+                  if (element.libraryItemId === this.nowPlayingItem.id) {
+                    currentTime = element.currentTime
+                    break
+                  }
                 }
-              }
-              let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
-              let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
-              let updateSession: UpdateSession = {
-                deviceInfo: {
-                  id: '00000000',
-                  userId: this.playItem!.userId,
-                  deviceName: deviceInfo.productModel,
-                  clientName: 'Abs-HarmonyOS',
-                  clientVersion: bundleInfo.versionName
-                },
-                mediaPlayer: "avPlayer",
-                currentTime: currentTime,
-                timeListened: new Date().getTime() / 1000 - this.syncTime
-              }
-              console.log("会话当前时间", updateSession.currentTime)
-              console.log("会话汇报间隔", updateSession.timeListened)
-              await closeSession(this.sessionId, updateSession)
-            })
+                let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+                let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
+                let updateSession: UpdateSession = {
+                  deviceInfo: {
+                    id: '00000000',
+                    userId: this.playItem!.userId,
+                    deviceName: deviceInfo.productModel,
+                    clientName: 'Abs-HarmonyOS',
+                    clientVersion: bundleInfo.versionName
+                  },
+                  mediaPlayer: "avPlayer",
+                  currentTime: currentTime,
+                  timeListened: new Date().getTime() / 1000 - this.syncTime
+                }
+                console.log("会话当前时间", updateSession.currentTime)
+                console.log("会话汇报间隔", updateSession.timeListened)
+                await closeSession(this.sessionId, updateSession)
+              })
+          }
+          .width('80%')
+          .height('auto')
+          .borderRadius(10)
+          .backgroundColor('#333333')
+
+          Column() {
+            Text("清除睡眠定时")
+              .width('100%')
+              .height(60)
+              .textAlign(TextAlign.Center)
+              .border({
+                radius: 10
+              })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontSize(24)
+              .fontColor(Color.White)
+              .backgroundColor('#333333')
+              .onClick(async () => {
+                this.showMenu = false
+                this.sleepTime = 0
+              })
+          }
+          .width('80%')
+          .height('auto')
+          .borderRadius(10)
+          .backgroundColor('#333333')
         }
         .width('80%')
         .height('auto')
@@ -480,6 +555,381 @@ export default struct Play {
         this.showMenu = false
       })
       .visibility(this.showMenu === true ? Visibility.Visible : Visibility.None)
+
+      Column() {
+        Column() {
+          List() {
+
+          }
+          .width('100%')
+          .height('100%')
+          .layoutWeight(1)
+
+          Button({ type: ButtonType.Normal }) {
+            Text("创建书签")
+              .width('100%')
+              .height(50)
+              .textAlign(TextAlign.Center)
+              .border({
+                radius: 10
+              })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontSize(20)
+              .fontColor(Color.White)
+          }
+          .backgroundColor(Color.Green)
+          .width('100%')
+          .height(50)
+          .onClick(() => {
+
+          })
+        }
+        .width('80%')
+        .height(400)
+        .borderRadius(10)
+        .clip(true)
+        .backgroundColor('#333333')
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#80000000')
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.showBookmark = false
+      })
+      .visibility(this.showBookmark === true ? Visibility.Visible : Visibility.None)
+
+      Column() {
+        Column() {
+          Text("0.5x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 0.5
+            })
+          Text("1.0x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 1
+            })
+          Text("1.25x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 1.25
+            })
+          Text("1.5x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 1.5
+            })
+          Text("1.75x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 1.75
+            })
+          Text("2.0x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = 2
+            })
+          Row() {
+            TextInput({ text: $$this.speedValue, placeholder: "输入播放速度" })
+              .width('100%')
+              .height(38)
+              .layoutWeight(1)
+              .margin({ left: 20, right: 10 })
+              .border({
+                width: 2,
+                color: Color.White,
+                radius: 5
+              })
+              .type(InputType.Number)
+              .enterKeyType(EnterKeyType.Done)
+              .fontSize(18)
+              .placeholderFont({
+                size: 18
+              })
+              .caretColor(Color.White)
+              .fontColor(Color.White)
+              .placeholderColor('#cccccc')
+            Button({ type: ButtonType.Normal }) {
+              Text("设置")
+                .width('100%')
+                .textAlign(TextAlign.Center)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .fontSize(18)
+                .fontColor(Color.White)
+            }
+            .margin({ right: 20 })
+            .width(70)
+            .height(40)
+            .borderRadius(5)
+            .backgroundColor(Color.Green)
+            .onClick(() => {
+              if (this.speedValue > 0) {
+                this.speed = this.speedValue
+                console.log("设置播放速度", this.speed)
+                this.speedValue = 0
+                this.showSpeed = false
+              } else {
+                console.log("设置播放速度无效")
+                promptAction.showToast({
+                  message: '播放速度必须大于0',
+                  duration: 500
+                });
+              }
+            })
+          }
+          .width('100%')
+          .height(53)
+          .alignItems(VerticalAlign.Top)
+          .padding({ top: 3 })
+          .borderRadius(10)
+          .backgroundColor('#333333')
+        }
+        .width('80%')
+        .height('auto')
+        .borderRadius(10)
+        .backgroundColor('#333333')
+        .onClick(() => {
+        })
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#80000000')
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.showSpeed = false
+      })
+      .visibility(this.showSpeed === true ? Visibility.Visible : Visibility.None)
+
+      Column() {
+        Column() {
+          Text("5分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 300
+            })
+          Text("10分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 600
+            })
+          Text("15分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 900
+            })
+          Text("30分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 1800
+            })
+          Text("45分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 2700
+            })
+          Text("60分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 3600
+            })
+          Text("90分钟")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 5400
+            })
+          Text("2小时")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = 7200
+            })
+          Text("章节结尾")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor('#333333')
+            .onClick(async () => {
+              this.showSleep = false
+              this.sleepTime = (this.nowPlayingDuration - this.nowPlayedTime) / this.speed
+            })
+        }
+        .width('80%')
+        .height('auto')
+        .borderRadius(10)
+        .backgroundColor('#333333')
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#80000000')
+      .justifyContent(FlexAlign.Center)
+      .onClick(() => {
+        this.showSleep = false
+      })
+      .visibility(this.showSleep === true ? Visibility.Visible : Visibility.None)
 
       Column() {
         Column() {
