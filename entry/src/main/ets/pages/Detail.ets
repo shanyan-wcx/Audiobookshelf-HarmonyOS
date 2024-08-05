@@ -75,6 +75,7 @@ export default struct Detail {
   @State mainWindow: window.Window | null = null
   @State showCover: boolean = true
   @Consume speed: number
+  @Consume speedNumber: number
   @Consume sleepTime: number
 
   async setSessionInfo() {
@@ -93,7 +94,7 @@ export default struct Detail {
     });
   }
 
-  async setPlaybackState(state: number) {
+  async setPlaybackState(state: number, speed: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
@@ -101,7 +102,7 @@ export default struct Detail {
         updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: 1.0,
+      speed: speed,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -271,6 +272,9 @@ export default struct Detail {
     avPlayer.on('seekDone', (seekDoneTime: number) => {
       console.info(`播放器跳转成功，当前时间为 ${seekDoneTime}`);
     })
+    avPlayer.on('speedDone', (speed: number) => {
+      console.info(`播放器设置速度成功，当前速度为 ${speed}`);
+    })
     avPlayer.on('error', (err: BusinessError) => {
       console.error(`播放器出现错误，code is ${err.code}, message is ${err.message}`);
       avPlayer.reset();
@@ -288,7 +292,8 @@ export default struct Detail {
           break;
         case 'prepared':
           console.info('播放器就绪。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE)
+          this.avPlayer!.setSpeed(this.speed)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE, this.speedNumber)
           this.avPlayer!.seek(this.startTime * 1000)
           if (this.isPlayingTransfer === true) {
             avPlayer.play()
@@ -298,11 +303,11 @@ export default struct Detail {
           break;
         case 'playing':
           console.info('播放器开始播放。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber)
           break;
         case 'paused':
           console.info('播放器暂停。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
           break;
         case 'completed':
           console.info('播放完毕。');
@@ -499,6 +504,8 @@ export default struct Detail {
                   await this.session!.destroy()
                   await this.stopContinuousTask();
                 }
+                this.speed = media.PlaybackSpeed.SPEED_FORWARD_1_00_X
+                this.speedNumber = 1
                 this.isPlayingTransfer = true
                 await this.startContinuousTask();
                 await this.avPlayer!.reset()
@@ -754,7 +761,7 @@ export default struct Detail {
             })
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontSize(18)
+            .fontSize(20)
             .fontColor(Color.White)
             .backgroundColor('#333333')
             .onClick(async () => {
@@ -793,7 +800,7 @@ export default struct Detail {
             })
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontSize(18)
+            .fontSize(20)
             .fontColor(Color.White)
             .backgroundColor('#333333')
             .onClick(async () => {

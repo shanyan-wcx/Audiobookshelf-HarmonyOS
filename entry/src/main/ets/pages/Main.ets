@@ -93,7 +93,8 @@ export default struct main {
   @Provide backPageIndex: number = 0
   @Provide sessionId: string = ''
   @Provide syncTime: number = 0
-  @Provide speed: number = 1
+  @Provide speed: number = media.PlaybackSpeed.SPEED_FORWARD_1_00_X
+  @Provide speedNumber: number = 1
   @Provide sleepTime: number = 0
   @Provide @Watch('changeSetting') jumpTime: number = 10
   @Provide mainWindow: window.Window | null = null

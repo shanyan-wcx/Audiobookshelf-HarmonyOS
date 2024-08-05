@@ -85,6 +85,7 @@ export default struct Play {
   @State speedValue: number = 0
   @Consume jumpTime: number
   @Consume speed: number
+  @Consume speedNumber: number
   @Consume sleepTime: number
 
   private getStatusBarHeight() {
@@ -112,7 +113,7 @@ export default struct Play {
     });
   }
 
-  async setPlaybackState(state: number) {
+  async setPlaybackState(state: number, speed: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
@@ -120,7 +121,7 @@ export default struct Play {
         updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: 1.0,
+      speed: speed,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -200,10 +201,10 @@ export default struct Play {
               .fontColor(Color.White)
           }
           .width('auto')
-          .height('50')
+          .height(45)
           .padding({ left: 15, right: 15 })
           .borderRadius(10)
-          .backgroundColor('#75000000')
+          .backgroundColor('#383838')
           .visibility(this.sleepTime > 0 ? Visibility.Visible : Visibility.None)
 
           Button({ type: ButtonType.Circle }) {
@@ -298,8 +299,8 @@ export default struct Play {
               }
               this.setSessionInfo()
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -320,8 +321,8 @@ export default struct Play {
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -359,8 +360,8 @@ export default struct Play {
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -388,8 +389,8 @@ export default struct Play {
               }
               this.setSessionInfo()
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
             })
           }
           .width('100%')
@@ -467,6 +468,29 @@ export default struct Play {
       Column() {
         Column() {
           Column() {
+            Text("清除睡眠定时")
+              .width('100%')
+              .height(60)
+              .textAlign(TextAlign.Center)
+              .border({
+                radius: 10
+              })
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .fontSize(20)
+              .fontColor(Color.White)
+              .backgroundColor('#333333')
+              .onClick(async () => {
+                this.showMenu = false
+                this.sleepTime = 0
+              })
+          }
+          .width('80%')
+          .height('auto')
+          .borderRadius(10)
+          .backgroundColor('#333333')
+
+          Column() {
             Text("关闭播放器")
               .width('100%')
               .height(60)
@@ -476,7 +500,7 @@ export default struct Play {
               })
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .fontSize(24)
+              .fontSize(20)
               .fontColor(Color.White)
               .backgroundColor('#333333')
               .onClick(async () => {
@@ -512,29 +536,6 @@ export default struct Play {
                 console.log("会话当前时间", updateSession.currentTime)
                 console.log("会话汇报间隔", updateSession.timeListened)
                 await closeSession(this.sessionId, updateSession)
-              })
-          }
-          .width('80%')
-          .height('auto')
-          .borderRadius(10)
-          .backgroundColor('#333333')
-
-          Column() {
-            Text("清除睡眠定时")
-              .width('100%')
-              .height(60)
-              .textAlign(TextAlign.Center)
-              .border({
-                radius: 10
-              })
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .fontSize(24)
-              .fontColor(Color.White)
-              .backgroundColor('#333333')
-              .onClick(async () => {
-                this.showMenu = false
-                this.sleepTime = 0
               })
           }
           .width('80%')
@@ -602,6 +603,48 @@ export default struct Play {
 
       Column() {
         Column() {
+          Text("0.125x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_0_125_X ? '#232323' : '#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_0_125_X
+              this.speedNumber = 0.125
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
+            })
+          Text("0.25x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_0_25_X ? '#232323' : '#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_0_25_X
+              this.speedNumber = 0.25
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
+            })
           Text("0.5x")
             .width('100%')
             .height(50)
@@ -613,10 +656,36 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_0_50_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 0.5
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_0_50_X
+              this.speedNumber = 0.5
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
+            })
+          Text("0.75x")
+            .width('100%')
+            .height(50)
+            .textAlign(TextAlign.Center)
+            .border({
+              radius: 10
+            })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontSize(20)
+            .fontColor(Color.White)
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_0_75_X ? '#232323' : '#333333')
+            .onClick(async () => {
+              this.showSpeed = false
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_0_75_X
+              this.speedNumber = 0.75
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
           Text("1.0x")
             .width('100%')
@@ -629,10 +698,15 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_1_00_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 1
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_1_00_X
+              this.speedNumber = 1
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
           Text("1.25x")
             .width('100%')
@@ -645,10 +719,15 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_1_25_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 1.25
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_1_25_X
+              this.speedNumber = 1.25
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
           Text("1.5x")
             .width('100%')
@@ -661,10 +740,15 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_1_50_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 1.5
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_1_50_X
+              this.speedNumber = 1.5
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
           Text("1.75x")
             .width('100%')
@@ -677,10 +761,15 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_1_75_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 1.75
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_1_75_X
+              this.speedNumber = 1.75
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
           Text("2.0x")
             .width('100%')
@@ -693,66 +782,16 @@ export default struct Play {
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .fontSize(20)
             .fontColor(Color.White)
-            .backgroundColor('#333333')
+            .backgroundColor(this.speed === media.PlaybackSpeed.SPEED_FORWARD_2_00_X ? '#232323' : '#333333')
             .onClick(async () => {
               this.showSpeed = false
-              this.speed = 2
+              this.speed = media.PlaybackSpeed.SPEED_FORWARD_2_00_X
+              this.speedNumber = 2
+              this.avPlayer!.setSpeed(this.speed)
+              await this.setPlaybackState(this.isPlayingTransfer === true ?
+              AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
+                this.speedNumber)
             })
-          Row() {
-            TextInput({ text: $$this.speedValue, placeholder: "输入播放速度" })
-              .width('100%')
-              .height(38)
-              .layoutWeight(1)
-              .margin({ left: 20, right: 10 })
-              .border({
-                width: 2,
-                color: Color.White,
-                radius: 5
-              })
-              .type(InputType.Number)
-              .enterKeyType(EnterKeyType.Done)
-              .fontSize(18)
-              .placeholderFont({
-                size: 18
-              })
-              .caretColor(Color.White)
-              .fontColor(Color.White)
-              .placeholderColor('#cccccc')
-            Button({ type: ButtonType.Normal }) {
-              Text("设置")
-                .width('100%')
-                .textAlign(TextAlign.Center)
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-                .fontSize(18)
-                .fontColor(Color.White)
-            }
-            .margin({ right: 20 })
-            .width(70)
-            .height(40)
-            .borderRadius(5)
-            .backgroundColor(Color.Green)
-            .onClick(() => {
-              if (this.speedValue > 0) {
-                this.speed = this.speedValue
-                console.log("设置播放速度", this.speed)
-                this.speedValue = 0
-                this.showSpeed = false
-              } else {
-                console.log("设置播放速度无效")
-                promptAction.showToast({
-                  message: '播放速度必须大于0',
-                  duration: 500
-                });
-              }
-            })
-          }
-          .width('100%')
-          .height(53)
-          .alignItems(VerticalAlign.Top)
-          .padding({ top: 3 })
-          .borderRadius(10)
-          .backgroundColor('#333333')
         }
         .width('80%')
         .height('auto')
@@ -934,7 +973,7 @@ export default struct Play {
       Column() {
         Column() {
           List() {
-            ForEach(this.nowPlayingChapters, (item: number, index) => {
+            ForEach(this.nowPlayingChapters, (item: Chapter, index) => {
               ListItem() {
                 Row() {
                   Text(this.nowPlayingChapters[index].title)
@@ -971,8 +1010,8 @@ export default struct Play {
                   this.showChapters = false
                   this.setSessionInfo()
                   this.isPlayingTransfer === true ?
-                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
                 })
               }
             })
