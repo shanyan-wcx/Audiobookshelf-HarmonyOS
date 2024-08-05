@@ -6,6 +6,7 @@ import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
+import { readConfig, writeConfig } from '../util/fs'
 import {
   getLogout,
   getLibraries,
@@ -26,6 +27,7 @@ import collection from './tabs/Collection'
 import Detail from './Detail'
 import SeriesItems from './SeriesItems'
 import Play from './Play'
+import Setting from './Setting'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -80,6 +82,7 @@ export default struct main {
   @Provide backPageIndex: number = 0
   @Provide sessionId: string = ''
   @Provide syncTime: number = 0
+  @Provide @Watch('changeSetting') jumpTime: number = 10
   @Provide mainWindow: window.Window | null = null
   @State currentItem: LibraryItem = {
     id: '',
@@ -154,6 +157,12 @@ export default struct main {
     this.startPlaying = this.startPlayingTransfer
     this.isPlaying = this.isPlayingTransfer
     this.currentItem = this.itemTransfer
+  }
+
+  async changeSetting() {
+    let config = readConfig()
+    config.jumpTime = this.jumpTime
+    writeConfig(config)
   }
 
   async setSessionInfo() {
@@ -401,7 +410,6 @@ export default struct main {
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
     this.avPlayer = await media.createAVPlayer();
-
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
@@ -422,6 +430,8 @@ export default struct main {
         }
       }
     }));
+    let config = readConfig()
+    this.jumpTime = config.jumpTime
     this.showProgressTransfer = false
   }
 
@@ -692,12 +702,7 @@ export default struct main {
             .visibility(this.pageIndex === 1 ? Visibility.Visible : Visibility.None)
 
             Column() {
-              Text("设置")
-                .fontSize(40)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('100%')
-                .textAlign(TextAlign.Center)
+              Setting()
             }
             .backgroundColor("#333333")
             .width("100%")
@@ -769,7 +774,7 @@ export default struct main {
                 .margin({ bottom: 10 })
 
               Button({ type: ButtonType.Circle }) {
-                Image($rawfile('rewind.png'))
+                Image(this.jumpTime === 10 ? $rawfile('rewind_10.png') : $rawfile('rewind_30.png'))
                   .width(30)
                   .height(30)
               }
@@ -778,10 +783,10 @@ export default struct main {
               .margin({ right: 5, bottom: 10 })
               .backgroundColor('#00000000')
               .onClick(() => {
-                if (this.nowPlayedTime - 10 < 0) {
+                if (this.nowPlayedTime - this.jumpTime < 0) {
                   this.nowPlayedTime = 0
                 } else {
-                  this.nowPlayedTime -= 10
+                  this.nowPlayedTime -= this.jumpTime
                 }
                 this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
                 this.avPlayer!.seek(this.nowPlayedTime * 1000)
@@ -811,7 +816,7 @@ export default struct main {
               })
 
               Button({ type: ButtonType.Circle }) {
-                Image($rawfile('forward.png'))
+                Image(this.jumpTime === 10 ? $rawfile('forward_10.png') : $rawfile('forward_30.png'))
                   .width(30)
                   .height(30)
               }
@@ -820,10 +825,10 @@ export default struct main {
               .margin({ right: 5, bottom: 10 })
               .backgroundColor('#00000000')
               .onClick(() => {
-                if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
+                if (this.nowPlayedTime + this.jumpTime > this.nowPlayingDuration) {
                   this.nowPlayedTime = this.nowPlayingDuration
                 } else {
-                  this.nowPlayedTime += 10
+                  this.nowPlayedTime += this.jumpTime
                 }
                 this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
                 this.avPlayer!.seek(this.nowPlayedTime * 1000)

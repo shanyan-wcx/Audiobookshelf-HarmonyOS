@@ -11,7 +11,8 @@ export interface User {
 
 export interface Config {
   loginInfo: LoginInfo,
-  rememberLoginInfo: Boolean
+  rememberLoginInfo: Boolean,
+  jumpTime: number
 }
 
 export interface LibrarySettings {

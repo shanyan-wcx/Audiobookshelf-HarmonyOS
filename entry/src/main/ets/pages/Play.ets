@@ -64,6 +64,7 @@ export default struct Play {
   @Consume playItem: PlayItem | null
   @State mainWindow: window.Window | null = null
   @State showCover: boolean = true
+  @Consume jumpTime: number
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -122,7 +123,7 @@ export default struct Play {
     this.getStatusBarHeight()
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
     this.displayHeight = px2vp(this.mainWindow.getWindowProperties().windowRect.height)
-    console.log("屏幕高度",this.displayHeight)
+    console.log("屏幕高度", this.displayHeight)
     if (this.displayHeight < 700) {
       this.showCover = false
     } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
@@ -135,7 +136,7 @@ export default struct Play {
     this.mainWindow.on('windowSizeChange', (size) => {
       this.displayWidth = px2vp(size.width)
       this.displayHeight = px2vp(size.height)
-      console.log("屏幕高度",this.displayHeight)
+      console.log("屏幕高度", this.displayHeight)
       if (this.displayHeight < 700) {
         this.showCover = false
       } else if (this.displayWidth >= 320 && this.displayWidth < 550) {
@@ -265,7 +266,7 @@ export default struct Play {
             })
 
             Button({ type: ButtonType.Circle }) {
-              Image($rawfile('rewind.png'))
+              Image(this.jumpTime === 10 ? $rawfile('rewind_10.png') : $rawfile('rewind_30.png'))
                 .width(45)
                 .height(45)
             }
@@ -274,10 +275,10 @@ export default struct Play {
             .margin({ right: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-              if (this.nowPlayedTime - 10 < 0) {
+              if (this.nowPlayedTime - this.jumpTime < 0) {
                 this.nowPlayedTime = 0
               } else {
-                this.nowPlayedTime -= 10
+                this.nowPlayedTime -= this.jumpTime
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
@@ -304,7 +305,7 @@ export default struct Play {
             })
 
             Button({ type: ButtonType.Circle }) {
-              Image($rawfile('forward.png'))
+              Image(this.jumpTime === 10 ? $rawfile('forward_10.png') : $rawfile('forward_30.png'))
                 .width(40)
                 .height(40)
             }
@@ -313,10 +314,10 @@ export default struct Play {
             .margin({ left: 10 })
             .backgroundColor('#00000000')
             .onClick(() => {
-              if (this.nowPlayedTime + 10 > this.nowPlayingDuration) {
+              if (this.nowPlayedTime + this.jumpTime > this.nowPlayingDuration) {
                 this.nowPlayedTime = this.nowPlayingDuration
               } else {
-                this.nowPlayedTime += 10
+                this.nowPlayedTime += this.jumpTime
               }
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)

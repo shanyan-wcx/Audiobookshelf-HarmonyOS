@@ -10,7 +10,8 @@ let config: Config = {
     username: '',
     password: ''
   },
-  rememberLoginInfo: false
+  rememberLoginInfo: false,
+  jumpTime: 10
 }
 
 class RouTmp {
@@ -69,7 +70,7 @@ export default struct login {
       }
     })
     if (this.params.firstLogin === true) {
-      config = readConfig(config)
+      config = readConfig()
       if (config.rememberLoginInfo === true) {
         this.loginInfo.server = config.loginInfo.server
         this.loginInfo.username = config.loginInfo.username

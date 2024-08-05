@@ -15,7 +15,8 @@ export function createConfig(): void {
       username: '',
       password: ''
     },
-    rememberLoginInfo: false
+    rememberLoginInfo: false,
+    jumpTime: 10
   }
   // fs.unlinkSync(filesDir + '/config.json')
   let configStatus = fs.accessSync(filesDir + '/config.json')
@@ -30,7 +31,8 @@ export function createConfig(): void {
   console.log("配置文件位置", filesDir + '/config.json')
 }
 
-export function readConfig(config: Config): Config {
+export function readConfig(): Config {
+  let config: Config
   let file = fs.openSync(filesDir + '/config.json', fs.OpenMode.READ_WRITE)
   let arrayBuffer = new ArrayBuffer(4096);
   let readLen = fs.readSync(file.fd, arrayBuffer);
