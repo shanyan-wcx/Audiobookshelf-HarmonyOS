@@ -6,7 +6,16 @@ import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
-import { LibraryItem, Chapter, Progress, PlayItem, Track, UpdateProgress, UpdateSession } from '../api/Interface'
+import {
+  LibraryItem,
+  Chapter,
+  Progress,
+  PlayItem,
+  Track,
+  UpdateProgress,
+  UpdateSession,
+  Bookmark
+} from '../api/Interface'
 import {
   getItem,
   getPlayItem,
@@ -50,7 +59,7 @@ export default struct Detail {
   @Consume avPlayer: media.AVPlayer | null
   @Consume playTitle: string
   @Consume server: string
-  @Consume apitoken: string | null
+  @Consume apitoken: string
   @Consume nowPlayingTracks: Track[]
   @Consume nowPlayingIndex: number
   @Consume nowPlayingDuration: number
@@ -60,7 +69,7 @@ export default struct Detail {
   @State elapsedTime: number = 0
   @Consume showPlayTransfer: boolean
   @Consume session: AVSessionManager.AVSession | null
-  @State startTime: number = 0
+  @Consume startTime: number
   @Consume backPageIndex: number
   @Consume sessionId: string
   @Consume syncTime: number
@@ -77,6 +86,8 @@ export default struct Detail {
   @Consume speed: number
   @Consume speedNumber: number
   @Consume sleepTime: number
+  @Consume bookmarks: Bookmark[]
+  @Consume nowPlayingBookmarks: Bookmark[]
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -94,16 +105,18 @@ export default struct Detail {
     });
   }
 
-  async setPlaybackState(state: number, speed: number) {
+  async setPlaybackState(state: number, time?: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
-      position: {
-        elapsedTime: this.nowPlayedTime * 1000,
-        updateTime: new Date().getTime(),
-      },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: speed,
+      speed: this.speedNumber,
     };
+    if (time !== undefined) {
+      playbackState.position = {
+        elapsedTime: time * 1000,
+        updateTime: new Date().getTime(),
+      }
+    }
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
         console.error(`设置Session状态失败，Code: ${err.code}, message: ${err.message}`);
@@ -139,11 +152,10 @@ export default struct Detail {
       } else {
         this.nowPlayingIndex--
         this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
-        this.nowPlayedTime = 0
+        this.startTime = 0
         this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
         this.avPlayer!.url =
           this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
-        this.setSessionInfo()
       }
     });
     this.session!.on('playNext', async () => {
@@ -156,22 +168,23 @@ export default struct Detail {
       } else {
         this.nowPlayingIndex++
         this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
-        this.nowPlayedTime = 0
+        this.startTime = 0
         this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
         this.avPlayer!.url =
           this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
-        this.setSessionInfo()
       }
+    });
+    this.session!.on('seek', (time: number) => {
+      this.avPlayer!.seek(time)
+      this.isPlayingTransfer === true ?
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, time/1000) :
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, time/1000)
     });
     this.session!.on('setSpeed', (time) => {
       console.log('触发setSpeed行为。')
     });
-
-    this.session!.off('seek');
     this.session!.off('setLoopMode');
     this.session!.off('toggleFavorite');
-    this.session!.off('handleKeyEvent');
-    this.session!.off('commonCommand');
   }
 
   async startContinuousTask() {
@@ -220,7 +233,7 @@ export default struct Detail {
         }
       }
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
-      if (this.elapsedTime >= 5500) {
+      if (this.elapsedTime >= 1000) {
         let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
         let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
         let upProgress: UpdateProgress = {
@@ -284,7 +297,6 @@ export default struct Detail {
         case 'idle':
           console.info('播放器重置。');
           this.elapsedTime = 0
-          this.startTime = 0
           break;
         case 'initialized':
           console.info('播放器初始化。');
@@ -293,21 +305,22 @@ export default struct Detail {
         case 'prepared':
           console.info('播放器就绪。');
           this.avPlayer!.setSpeed(this.speed)
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE, this.speedNumber)
+          this.setSessionInfo()
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PREPARE, this.startTime)
           this.avPlayer!.seek(this.startTime * 1000)
           if (this.isPlayingTransfer === true) {
-            avPlayer.play()
+            this.avPlayer!.play()
           } else {
-            avPlayer.pause()
+            this.avPlayer!.pause()
           }
           break;
         case 'playing':
           console.info('播放器开始播放。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
           break;
         case 'paused':
           console.info('播放器暂停。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
           break;
         case 'completed':
           console.info('播放完毕。');
@@ -316,10 +329,10 @@ export default struct Detail {
             avPlayer.stop()
           } else {
             this.nowPlayingIndex++
-            this.playTitle = this.nowPlayingTracks[this.nowPlayingIndex].title
+            this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
             avPlayer.url =
               this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
-            this.nowPlayedTime = 0
+            this.startTime = 0
             this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
             avPlayer.prepare()
           }
@@ -354,8 +367,8 @@ export default struct Detail {
     this.nowTrackStartTime = playItem.audioTracks[index].startOffset
     console.log("找到音频Url为", url)
     this.nowPlayingIndex = index
-    this.nowPlayedTime = playItem.currentTime - playItem.audioTracks[index].startOffset
-    console.log("起始位置为", this.nowPlayedTime * 1000)
+    this.startTime = playItem.currentTime - playItem.audioTracks[index].startOffset
+    console.log("起始位置为", this.startTime * 1000)
     return url
   }
 
@@ -394,6 +407,16 @@ export default struct Detail {
         "剩余 " + formatDuration(this.getProgressById(itemId).duration - this.getProgressById(itemId).currentTime)
     }
     return duration
+  }
+
+  async getPlayingBookmarks(itemId: string): Promise<Bookmark[]> {
+    let nowPlayingBookmarks: Bookmark[] = []
+    this.bookmarks.forEach(element => {
+      if (element.libraryItemId === itemId) {
+        nowPlayingBookmarks.push(element)
+      }
+    });
+    return nowPlayingBookmarks
   }
 
   async aboutToAppear() {
@@ -512,16 +535,15 @@ export default struct Detail {
                 this.setAVPlayerCallback(this.avPlayer!);
                 this.nowPlayingChapters = await getItem(this.itemTransfer.id)
                 this.nowPlayingItem = this.itemTransfer
+                this.nowPlayingBookmarks = await this.getPlayingBookmarks(this.nowPlayingItem.id)
                 this.playItem = await getPlayItem(this.nowPlayingItem.id)
                 let url: string = await this.getPlayContent(this.playItem)
                 this.sessionId = this.playItem.id
                 this.session = await AVSessionManager.createAVSession(context, 'AUDIO_PLAY', 'audio');
                 console.log("创建Session。")
                 await this.setSessionCallback()
-                await this.setSessionInfo()
                 await this.session!.activate()
                 console.log("Session已激活。")
-                this.startTime = this.nowPlayedTime
                 this.avPlayer!.url = url
                 this.startPlayingTransfer = true
                 this.syncTime = new Date().getTime() / 1000

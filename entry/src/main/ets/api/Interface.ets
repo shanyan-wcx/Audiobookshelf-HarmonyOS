@@ -268,3 +268,50 @@ export interface Series {
   addedAt: number;
   totalDuration: number;
 }
+
+export interface ListeningStats {
+  totalTime: number;
+  items: Record<string, ListeningStatsItem>;
+  days: Record<string, number>;
+  dayOfWeek: Record<string, number>;
+  today: number;
+  recentSessions: RecentSession[];
+}
+
+export interface ListeningStatsItem {
+  id: string;
+  timeListening: number;
+  mediaMetadata: Metadata;
+}
+
+export interface RecentSession {
+  id: string;
+  userId: string;
+  libraryId: string;
+  libraryItemId: string;
+  episodeId: string;
+  mediaType: string;
+  mediaMetadata: Metadata;
+  chapters: Chapter[];
+  displayTitle: string;
+  displayAuthor: string;
+  coverPath: string;
+  duration: number;
+  playMethod: number;
+  mediaPlayer: string;
+  deviceInfo: DeviceInfo;
+  date: string;
+  dayOfWeek: string;
+  timeListening: number;
+  startTime: number;
+  currentTime: number;
+  startedAt: number;
+  updatedAt: number;
+}
+
+export interface Bookmark {
+  libraryItemId: string;
+  title: string;
+  time: number;
+  createdAt: number;
+}

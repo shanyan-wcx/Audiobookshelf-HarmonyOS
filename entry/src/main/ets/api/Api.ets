@@ -15,7 +15,9 @@ import {
   UpdateProgress,
   Author,
   Series,
-  UpdateSession
+  UpdateSession,
+  ListeningStats,
+  Bookmark
 } from './Interface'
 import { downloadCover } from '../util/fs'
 
@@ -38,7 +40,7 @@ function createApi() {
   return api
 }
 
-export async function getLogin(loginInfo: LoginInfo): Promise<string | null> {
+export async function getLogin(loginInfo: LoginInfo): Promise<string[] | null> {
   let user: User = {
     username: loginInfo.username,
     password: loginInfo.password
@@ -52,7 +54,7 @@ export async function getLogin(loginInfo: LoginInfo): Promise<string | null> {
     console.log("Token:", JSON.stringify(response.data.user.token));
     authToken = response.data.user.token
     userId = response.data.user.id
-    return authToken
+    return [authToken, userId]
   } catch (error) {
     console.error(JSON.stringify(error));
     return null
@@ -419,6 +421,79 @@ export async function closeSession(sessionId: string, updateSession: UpdateSessi
     console.error(JSON.stringify(error));
     promptAction.showToast({
       message: '关闭会话失败，请检查网络！',
+      duration: 500
+    });
+  }
+}
+
+export async function getStats(): Promise<ListeningStats> {
+  let listeningStats: ListeningStats = {
+    totalTime: 0,
+    items: {},
+    days: {},
+    dayOfWeek: {},
+    today: 0,
+    recentSessions: []
+  }
+  const api: Axios = createApi()
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, UpdateSession>('/api/me/listening-stats')
+    listeningStats = response.data
+    console.log("获取统计数据成功");
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取统计数据失败，请检查网络！',
+      duration: 500
+    });
+  }
+  return listeningStats
+}
+
+export async function getBookmarks(userId: string): Promise<Bookmark[]> {
+  const api: Axios = createApi()
+  let bookmarks: Bookmark[] = []
+  try {
+    const response: AxiosResponse =
+      await api.get<string, AxiosResponse<string>, null>(`/api/users/${userId}`)
+    bookmarks = response.data.bookmarks
+    return bookmarks
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '获取系列失败，请检查网络！',
+      duration: 500
+    });
+    return []
+  }
+}
+
+export async function createBookmark(itemId: string, bookmark: Bookmark) {
+  const api: Axios = createApi()
+  try {
+    const response: AxiosResponse =
+      await api.post<string, AxiosResponse<string>, Bookmark>(`/api/me/item/${itemId}/bookmark`, bookmark)
+    console.log("创建书签成功", JSON.stringify(response.data));
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '创建书签失败，请检查网络！',
+      duration: 500
+    });
+  }
+}
+
+export async function deleteBookmark(itemId: string, time: number) {
+  const api: Axios = createApi()
+  try {
+    const response: AxiosResponse =
+      await api.delete<string, AxiosResponse<string>, null>(`/api/me/item/${itemId}/bookmark/${time}`)
+    console.log("删除书签成功", JSON.stringify(response.data));
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    promptAction.showToast({
+      message: '删除书签失败，请检查网络！',
       duration: 500
     });
   }

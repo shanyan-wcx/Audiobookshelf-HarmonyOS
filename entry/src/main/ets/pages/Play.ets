@@ -7,30 +7,34 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
-import { LibraryItem, Chapter, Track, UpdateSession, Progress, PlayItem } from '../api/Interface'
-import { closeSession } from '../api/Api'
+import { LibraryItem, Chapter, Track, UpdateSession, Progress, PlayItem, Bookmark } from '../api/Interface'
+import { closeSession, createBookmark, deleteBookmark, getBookmarks } from '../api/Api'
 import { radio } from '@kit.TelephonyKit';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
 
 function formatDuration(seconds: number): string {
-  const roundedSeconds = Math.round(seconds);
-
+  const roundedSeconds = Math.floor(seconds);
   const hours = Math.floor(roundedSeconds / 3600);
   const minutes = Math.floor((roundedSeconds % 3600) / 60);
   const secs = roundedSeconds % 60;
-
   const paddedMinutes = minutes.toString().padStart(2, '0');
   const paddedSeconds = secs.toString().padStart(2, '0');
-
   let formattedTime = `${paddedMinutes}:${paddedSeconds}`;
   if (hours > 0) {
     const paddedHours = hours.toString().padStart(2, '0');
     formattedTime = `${paddedHours}:${formattedTime}`;
   }
-
   return formattedTime;
+}
+
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const formatNumber = (num: number) => (num < 10 ? `0${num}` : `${num}`);
+  return `${formatNumber(hours)}:${formatNumber(minutes)}:${formatNumber(secs)}`;
 }
 
 function formatSleepTime(seconds: number): string {
@@ -69,11 +73,12 @@ export default struct Play {
   @Consume playTitle: string
   @Consume nowPlayingDuration: number
   @Consume nowPlayedTime: number
+  @Consume startTime: number
   @Consume nowPlayedProgress: number
   @Consume nowPlayingTracks: Track[]
   @Consume nowPlayingIndex: number
   @Consume server: string
-  @Consume apitoken: string | null
+  @Consume apitoken: string
   @Consume nowTrackStartTime: number
   @Consume session: AVSessionManager.AVSession | null
   @Consume sessionId: string
@@ -87,6 +92,34 @@ export default struct Play {
   @Consume speed: number
   @Consume speedNumber: number
   @Consume sleepTime: number
+  @Consume bookmarks: Bookmark[]
+  @Consume nowPlayingBookmarks: Bookmark[]
+  @Consume libraryItems: LibraryItem[]
+  @State nowTime: string = ''
+  @State createBookmarkTitle: string = ''
+  @State nowTimeNumber: number = 0
+  private bookmarkScroller: Scroller = new Scroller
+  @Consume prepared: boolean
+  @State progressWidth: number = 0
+
+  @Builder
+  bookmarkOperate(index: number) {
+    Button({ type: ButtonType.Circle }) {
+      Image($rawfile('delete.png'))
+        .width(30)
+        .height(30)
+    }
+    .height(40)
+    .width(40)
+    .margin({ left: 10, right: 10 })
+    .backgroundColor('#00000000')
+    .onClick(async () => {
+      await deleteBookmark(this.nowPlayingItem.id, this.nowPlayingBookmarks[index].time)
+      this.bookmarks = await getBookmarks(this.playItem!.userId)
+      this.nowPlayingBookmarks = await this.getPlayingBookmarks(this.nowPlayingItem.id)
+      this.bookmarkScroller.scrollEdge(Edge.Bottom)
+    })
+  }
 
   private getStatusBarHeight() {
     window.getLastWindow(getContext(this), (error, topWindow) => {
@@ -113,15 +146,15 @@ export default struct Play {
     });
   }
 
-  async setPlaybackState(state: number, speed: number) {
+  async setPlaybackState(state: number, time: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
-        elapsedTime: this.nowPlayedTime * 1000,
+        elapsedTime: time * 1000,
         updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: speed,
+      speed: this.speedNumber,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -138,6 +171,26 @@ export default struct Play {
     }).catch((err: BusinessError) => {
       console.error(`停止长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
+  }
+
+  async getCurrentTime() {
+    for (let element of this.allProgress) {
+      if (element.libraryItemId === this.nowPlayingItem.id) {
+        this.nowTime = formatTime(element.currentTime)
+        this.nowTimeNumber = Math.round(element.currentTime)
+        break
+      }
+    }
+  }
+
+  async getPlayingBookmarks(itemId: string): Promise<Bookmark[]> {
+    let nowPlayingBookmarks: Bookmark[] = []
+    this.bookmarks.forEach(element => {
+      if (element.libraryItemId === itemId) {
+        nowPlayingBookmarks.push(element)
+      }
+    });
+    return nowPlayingBookmarks
   }
 
   async aboutToAppear() {
@@ -172,6 +225,26 @@ export default struct Play {
         this.showCover = true
       }
     })
+  }
+
+  async getPlayContent(playItem: PlayItem): Promise<string> {
+    let index: number = 0
+    this.nowPlayingTracks = playItem.audioTracks
+    for (let track of playItem.audioTracks) {
+      if (track.startOffset > playItem.currentTime) {
+        index = track.index - 2
+        console.log("找到当前音轨序号为" + index + "，起始位置为" + playItem.audioTracks[index].startOffset)
+        break
+      }
+    }
+    let url: string = this.server + playItem.audioTracks[index].contentUrl + "?token=" + this.apitoken
+    this.playTitle = playItem.chapters[index].title
+    this.nowTrackStartTime = playItem.audioTracks[index].startOffset
+    console.log("找到音频Url为", url)
+    this.nowPlayingIndex = index
+    this.startTime = playItem.currentTime - playItem.audioTracks[index].startOffset
+    console.log("起始位置为", this.startTime * 1000)
+    return url
   }
 
   build() {
@@ -270,6 +343,31 @@ export default struct Play {
               .width('100%')
               .margin({ top: 5, bottom: 15 })
               .color(Color.White)
+              .onAreaChange((oldValue: Area, newValue: Area) => {
+                this.progressWidth = newValue.width as number;
+              })
+              .gesture(
+                GestureGroup(
+                  GestureMode.Exclusive,
+                  TapGesture({ fingers: 1, count: 1 })
+                    .onAction((event: GestureEvent) => {
+                      let touchProgress = Math.round((event.fingerList[0].localX / this.progressWidth) * 100)
+                      if (touchProgress < 0) {
+                        this.nowPlayedProgress = 0
+                      } else if (touchProgress >= 100) {
+                        this.nowPlayedProgress = 99
+                      } else {
+                        this.nowPlayedProgress = touchProgress
+                      }
+                      console.log("触摸进度", this.nowPlayedProgress)
+                      this.startTime = this.nowPlayedProgress * this.nowPlayingDuration / 100
+                      this.avPlayer!.seek(this.startTime * 1000)
+                      this.isPlayingTransfer === true ?
+                      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.startTime) :
+                      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.startTime)
+                    })
+                )
+              )
           }
           .width('100%')
 
@@ -292,15 +390,14 @@ export default struct Play {
               } else {
                 this.nowPlayingIndex--
                 this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
-                this.nowPlayedTime = 0
+                this.startTime = 0
                 this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
                 this.avPlayer!.url =
                   this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+                this.isPlayingTransfer === true ?
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.startTime) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.startTime)
               }
-              this.setSessionInfo()
-              this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -321,8 +418,8 @@ export default struct Play {
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -340,6 +437,9 @@ export default struct Play {
               } else {
                 this.avPlayer!.play()
               }
+              this.isPlayingTransfer === true ?
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -360,8 +460,8 @@ export default struct Play {
               this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
               this.avPlayer!.seek(this.nowPlayedTime * 1000)
               this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
             })
 
             Button({ type: ButtonType.Circle }) {
@@ -382,15 +482,15 @@ export default struct Play {
               } else {
                 this.nowPlayingIndex++
                 this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
-                this.nowPlayedTime = 0
+                this.startTime = 0
                 this.nowTrackStartTime = this.nowPlayingTracks[this.nowPlayingIndex].startOffset
                 this.avPlayer!.url =
                   this.server + this.nowPlayingTracks[this.nowPlayingIndex].contentUrl + "?token=" + this.apitoken
+                this.isPlayingTransfer === true ?
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.startTime) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.startTime)
               }
-              this.setSessionInfo()
-              this.isPlayingTransfer === true ?
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
-              this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
+
             })
           }
           .width('100%')
@@ -406,7 +506,8 @@ export default struct Play {
             .width(35)
             .height(35)
             .backgroundColor('#00000000')
-            .onClick(() => {
+            .onClick(async () => {
+              await this.getCurrentTime()
               this.showBookmark = true
             })
 
@@ -559,31 +660,113 @@ export default struct Play {
 
       Column() {
         Column() {
-          List() {
-
-          }
-          .width('100%')
-          .height('100%')
-          .layoutWeight(1)
-
-          Button({ type: ButtonType.Normal }) {
-            Text("创建书签")
+          List({ scroller: this.bookmarkScroller, initialIndex: this.nowPlayingBookmarks.length - 1 }) {
+            ForEach(this.nowPlayingBookmarks, (item: Bookmark, index) => {
+              ListItem() {
+                Row() {
+                  Text(formatTime(item.time))
+                    .fontSize(16)
+                    .fontColor(Color.Gray)
+                    .textAlign(TextAlign.Center)
+                    .width(65)
+                  Text(item.title)
+                    .fontSize(20)
+                    .fontColor(Color.White)
+                    .textAlign(TextAlign.Start)
+                    .width('100%')
+                    .margin({ left: 15 })
+                    .layoutWeight(1)
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                }
+                .width('100%')
+                .height(50)
+                .padding({ left: 20, right: 20 })
+                .justifyContent(FlexAlign.SpaceBetween)
+                .onClick(async () => {
+                  await this.avPlayer!.reset()
+                  this.playItem!.currentTime = item.time
+                  console.log("准备跳转书签时间", this.playItem!.currentTime)
+                  let url: string = await this.getPlayContent(this.playItem!)
+                  this.avPlayer!.url = url
+                  this.isPlayingTransfer === true ?
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.startTime) :
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.startTime)
+                  this.showBookmark = false
+                })
+              }
               .width('100%')
-              .height(50)
-              .textAlign(TextAlign.Center)
-              .border({
-                radius: 10
+              .borderRadius(10)
+              .backgroundColor('#333333')
+              .swipeAction({
+                end: {
+                  builder: () => {
+                    this.bookmarkOperate(index)
+                  },
+                }
               })
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .fontSize(20)
-              .fontColor(Color.White)
+            })
           }
-          .backgroundColor(Color.Green)
           .width('100%')
-          .height(50)
-          .onClick(() => {
+          .height(350)
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
 
+          Row() {
+            Text(this.nowTime)
+              .fontSize(16)
+              .fontColor(Color.Gray)
+              .textAlign(TextAlign.Center)
+              .width(65)
+            TextInput({ text: $$this.createBookmarkTitle, placeholder: "书签标题" })
+              .width('100%')
+              .layoutWeight(1)
+              .height(40)
+              .margin({ left: 15 })
+              .border({
+                width: 2,
+                radius: 5,
+                color: Color.White
+              })
+              .placeholderColor('#cccccc')
+              .caretColor(Color.White)
+              .fontColor(Color.White)
+            Button({ type: ButtonType.Normal }) {
+              Text("创建")
+                .fontSize(20)
+                .fontColor(Color.White)
+            }
+            .backgroundColor(Color.Green)
+            .width(60)
+            .height(40)
+            .margin({ left: 15 })
+            .borderRadius(5)
+            .onClick(async () => {
+              if(this.createBookmarkTitle!==''){
+                let bookmark: Bookmark = {
+                  libraryItemId: this.nowPlayingItem.id,
+                  title: this.createBookmarkTitle,
+                  time: this.nowTimeNumber,
+                  createdAt: Math.round(new Date().getTime() / 1000)
+                }
+                await createBookmark(this.nowPlayingItem.id, bookmark)
+                this.bookmarks = await getBookmarks(this.playItem!.userId)
+                this.nowPlayingBookmarks = await this.getPlayingBookmarks(this.nowPlayingItem.id)
+                this.bookmarkScroller.scrollEdge(Edge.Bottom)
+                this.createBookmarkTitle = ''
+              }else {
+                promptAction.showToast({
+                  message: '书签标题不能为空',
+                  duration: 500
+                });
+              }
+            })
+          }
+          .width('100%')
+          .height(60)
+          .padding({ left: 20, right: 15 })
+          .backgroundColor('#383838')
+          .onClick(() => {
           })
         }
         .width('80%')
@@ -622,7 +805,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("0.25x")
             .width('100%')
@@ -643,7 +826,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("0.5x")
             .width('100%')
@@ -664,7 +847,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("0.75x")
             .width('100%')
@@ -685,7 +868,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("1.0x")
             .width('100%')
@@ -706,7 +889,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("1.25x")
             .width('100%')
@@ -727,7 +910,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("1.5x")
             .width('100%')
@@ -748,7 +931,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("1.75x")
             .width('100%')
@@ -769,7 +952,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
           Text("2.0x")
             .width('100%')
@@ -790,7 +973,7 @@ export default struct Play {
               this.avPlayer!.setSpeed(this.speed)
               await this.setPlaybackState(this.isPlayingTransfer === true ?
               AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY : AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE,
-                this.speedNumber)
+                this.nowPlayedTime)
             })
         }
         .width('80%')
@@ -1003,15 +1186,14 @@ export default struct Play {
                   await this.avPlayer!.reset();
                   this.nowPlayingIndex = index
                   this.playTitle = this.nowPlayingChapters[index].title
-                  this.nowPlayedTime = 0
+                  this.startTime = 0
                   this.nowTrackStartTime = this.nowPlayingTracks[index].startOffset
                   this.avPlayer!.url =
                     this.server + this.nowPlayingTracks[index].contentUrl + "?token=" + this.apitoken
                   this.showChapters = false
-                  this.setSessionInfo()
                   this.isPlayingTransfer === true ?
-                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.speedNumber) :
-                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.speedNumber)
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.startTime) :
+                  this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.startTime)
                 })
               }
             })

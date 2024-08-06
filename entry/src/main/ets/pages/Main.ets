@@ -1,6 +1,6 @@
 import { media } from '@kit.MediaKit';
 import { router, promptAction, curves, window } from '@kit.ArkUI';
-import { common } from '@kit.AbilityKit';
+import { common, Want } from '@kit.AbilityKit';
 import { webview } from '@kit.ArkWeb';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
@@ -17,7 +17,9 @@ import {
   getLibrarieItemsFinished,
   getAuthors,
   getSeries,
-  closeSession
+  closeSession,
+  getStats,
+  getBookmarks
 } from '../api/Api'
 import {
   Library,
@@ -28,7 +30,9 @@ import {
   Series,
   Author,
   PlayItem,
-  UpdateSession
+  UpdateSession,
+  ListeningStats,
+  Bookmark
 } from '../api/Interface'
 import library from './tabs/Library'
 import home from './tabs/Home'
@@ -39,6 +43,7 @@ import Detail from './Detail'
 import SeriesItems from './SeriesItems'
 import Play from './Play'
 import Setting from './Setting'
+import Stats from './Stats'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -49,7 +54,8 @@ let libraries: Library[] = []
 class RouTmp {
   server: string = ''
   username: string = ''
-  apitoken: string | null = null
+  apitoken: string = ''
+  userId: string = ''
 }
 
 @Entry
@@ -88,16 +94,21 @@ export default struct main {
   @Provide nowTrackStartTime: number = 0
   @Provide libraryItemsInProgress: LibraryItem[] = []
   @Provide libraryItemsFinished: LibraryItem[] = []
-  @Provide apitoken: string | null = this.params.apitoken
+  @Provide bookmarks: Bookmark[] = []
+  @Provide nowPlayingBookmarks: Bookmark[] = []
+  @Provide apitoken: string = this.params.apitoken
+  @Provide userId: string = this.params.userId
   @Provide session: AVSessionManager.AVSession | null = null
   @Provide backPageIndex: number = 0
   @Provide sessionId: string = ''
   @Provide syncTime: number = 0
+  @Provide startTime: number = 0
   @Provide speed: number = media.PlaybackSpeed.SPEED_FORWARD_1_00_X
   @Provide speedNumber: number = 1
   @Provide sleepTime: number = 0
   @Provide @Watch('changeSetting') jumpTime: number = 10
   @Provide mainWindow: window.Window | null = null
+  @Provide prepared: boolean = false
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -165,6 +176,14 @@ export default struct main {
     addedAt: 0,
     totalDuration: 0
   }
+  @Provide listeningStats: ListeningStats = {
+    totalTime: 0,
+    items: {},
+    days: {},
+    dayOfWeek: {},
+    today: 0,
+    recentSessions: []
+  }
 
   async changePage() {
     this.pageIndex = this.PageIndexTransfer
@@ -195,15 +214,15 @@ export default struct main {
     });
   }
 
-  async setPlaybackState(state: number) {
+  async setPlaybackState(state: number, time: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
       position: {
-        elapsedTime: this.nowPlayedTime * 1000,
+        elapsedTime: time * 1000,
         updateTime: new Date().getTime(),
       },
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      speed: 1.0,
+      speed: this.speedNumber,
     };
     this.session!.setAVPlaybackState(playbackState, (err) => {
       if (err) {
@@ -421,7 +440,6 @@ export default struct main {
   async aboutToAppear() {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
-    this.showProgressTransfer = true
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
@@ -429,23 +447,28 @@ export default struct main {
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-    this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-    this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
-    this.series = await getSeries(this.selectedLibraryId)
-    this.authors = await getAuthors(this.selectedLibraryId)
-    await Promise.all(this.libraryItems.map(async (element) => {
-      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-      if (coverStatus === false) {
-        try {
-          await getCover(element.id)
-          let progress = await getProgress(element.id)
-          this.allProgress.push(progress)
-        } catch (error) {
-          console.error(JSON.stringify(error));
-          console.log("获取封面失败。")
+    if(this.libraryItems.length >0){
+      this.showProgressTransfer = true
+      this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+      this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+      this.series = await getSeries(this.selectedLibraryId)
+      this.authors = await getAuthors(this.selectedLibraryId)
+      this.bookmarks = await getBookmarks(this.userId)
+      this.listeningStats = await getStats()
+      await Promise.all(this.libraryItems.map(async (element) => {
+        let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+        if (coverStatus === false) {
+          try {
+            await getCover(element.id)
+            let progress = await getProgress(element.id)
+            this.allProgress.push(progress)
+          } catch (error) {
+            console.error(JSON.stringify(error));
+            console.log("获取封面失败。")
+          }
         }
-      }
-    }));
+      }));
+    }
     let config = readConfig()
     this.jumpTime = config.jumpTime
     this.showProgressTransfer = false
@@ -464,7 +487,7 @@ export default struct main {
     let updateSession: UpdateSession = {
       deviceInfo: {
         id: '00000000',
-        userId: this.playItem!.userId,
+        userId: this.userId,
         deviceName: deviceInfo.productModel,
         clientName: 'Abs-HarmonyOS',
         clientVersion: bundleInfo.versionName
@@ -621,6 +644,34 @@ export default struct main {
 
           Column() {
             Row() {
+              Text("项目地址")
+                .fontSize(11)
+                .fontColor(Color.Gray)
+              Text('Audiobookshelf-HarmonyOS')
+                .fontSize(11)
+                .fontColor(Color.Gray)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .decoration({ type: TextDecorationType.Underline, color: Color.Gray })
+                .onClick(() => {
+                  animateTo({
+                    duration: 300,
+                    curve: Curve.EaseOut,
+                  }, () => {
+                    this.sidebarShow = false
+                  })
+                  let want: Want = {
+                    action: 'ohos.want.action.viewData',
+                    entities: ['entity.system.browsable'],
+                    uri: 'https://github.com/shanyan-wcx/Audiobookshelf-HarmonyOS'
+                  };
+                  context.startAbility(want)
+                })
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+
+            Row() {
               Text("隐私政策")
                 .fontSize(11)
                 .fontColor(Color.Gray)
@@ -641,6 +692,7 @@ export default struct main {
                 })
             }
             .width('100%')
+            .margin({ top: 10 })
             .justifyContent(FlexAlign.SpaceBetween)
 
             Row() {
@@ -732,12 +784,7 @@ export default struct main {
             .visibility(this.pageIndex === 0 ? Visibility.Visible : Visibility.None)
 
             Column() {
-              Text("用户信息统计")
-                .fontSize(40)
-                .fontColor(Color.White)
-                .width('100%')
-                .height('100%')
-                .textAlign(TextAlign.Center)
+              Stats()
             }
             .backgroundColor("#333333")
             .width("100%")
@@ -834,8 +881,8 @@ export default struct main {
                 this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
                 this.avPlayer!.seek(this.nowPlayedTime * 1000)
                 this.isPlayingTransfer === true ?
-                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
               })
 
               Button({ type: ButtonType.Circle }) {
@@ -855,7 +902,9 @@ export default struct main {
                 } else {
                   this.avPlayer!.play()
                 }
-                this.setSessionInfo()
+                this.isPlayingTransfer === true ?
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
               })
 
               Button({ type: ButtonType.Circle }) {
@@ -876,8 +925,8 @@ export default struct main {
                 this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
                 this.avPlayer!.seek(this.nowPlayedTime * 1000)
                 this.isPlayingTransfer === true ?
-                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY) :
-                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+                this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
               })
             }
             .width('100%')
@@ -969,7 +1018,7 @@ export default struct main {
           offsetX: 0,
           offsetY: 0,
           radius: 20,
-          color: Color.Black
+          color: '#95000000'
         })
       }
       .width('100%')

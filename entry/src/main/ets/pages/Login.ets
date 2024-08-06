@@ -3,6 +3,9 @@ import { router, promptAction } from '@kit.ArkUI';
 import { getLogin } from '../api/Api'
 import { LoginInfo, Config } from '../api/Interface'
 import { readConfig, writeConfig } from '../util/fs'
+import { webview } from '@kit.ArkWeb';
+
+PersistentStorage.persistProp('confirmPrivacy', false);
 
 let config: Config = {
   loginInfo: {
@@ -25,7 +28,8 @@ export default struct login {
   @State loginHeight: string = '45%'
   @State loginWidth: string = '85%'
   @State loginTop: string = '20%'
-  @State apitoken: string | null = null
+  @State apitoken: string = ''
+  @State userId: string = ''
   @State statusBarHeight: number = 0
   @State showProgress: boolean = false
   @State mainWindow: window.Window | null = null
@@ -35,8 +39,14 @@ export default struct login {
     username: '',
     password: ''
   }
+  @StorageLink('confirmPrivacy') confirmPrivacy: boolean = false
+  private webController: WebviewController = new webview.WebviewController();
 
   async aboutToAppear() {
+    if (this.confirmPrivacy === false) {
+      console.log('首次启动')
+      this.webController.prefetchPage('https://privacy.shanyan.work');
+    }
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
@@ -75,8 +85,10 @@ export default struct login {
         this.loginInfo.server = config.loginInfo.server
         this.loginInfo.username = config.loginInfo.username
         this.loginInfo.password = config.loginInfo.password
-        this.apitoken = await getLogin(this.loginInfo)
-        if (this.apitoken !== null) {
+        let info = await getLogin(this.loginInfo)
+        if (info !== null) {
+          this.apitoken = info[0]
+          this.userId = info[1]
           console.info("登陆成功！")
           promptAction.showToast({
             message: '登陆成功！',
@@ -87,7 +99,8 @@ export default struct login {
             params: {
               server: this.loginInfo.server,
               username: this.loginInfo.username,
-              apitoken: this.apitoken
+              apitoken: this.apitoken,
+              userId: this.userId
             }
           })
         } else {
@@ -115,7 +128,6 @@ export default struct login {
   }
 
   build() {
-    Column() {
       Stack() {
         Column() {
           Image($rawfile('logo.png'))
@@ -237,8 +249,10 @@ export default struct login {
             .backgroundColor('#aabbcc')
             .onClick(async () => {
               this.showProgress = true
-              this.apitoken = await getLogin(this.loginInfo)
-              if (this.apitoken !== null) {
+              let info = await getLogin(this.loginInfo)
+              if (info !== null) {
+                this.apitoken = info[0]
+                this.userId = info[1]
                 writeConfig(config)
                 this.showProgress = false
                 console.info("登陆成功！")
@@ -251,7 +265,8 @@ export default struct login {
                   params: {
                     server: this.loginInfo.server,
                     username: this.loginInfo.username,
-                    apitoken: this.apitoken
+                    apitoken: this.apitoken,
+                    userId: this.userId
                   }
                 })
               } else {
@@ -285,11 +300,51 @@ export default struct login {
         .justifyContent(FlexAlign.Center)
         .backgroundColor('#75000000')
         .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
+
+        Column() {
+          Column() {
+            Web({
+              src: "https://privacy.shanyan.work",
+              controller: this.webController
+            })
+              .width('100%')
+              .height('100%')
+              .backgroundColor('#333333')
+          }
+          .width(300)
+          .height(400)
+          .borderRadius(10)
+          .clip(true)
+          .shadow({
+            offsetX: 0,
+            offsetY: 0,
+            radius: 20,
+            color: '#95000000'
+          })
+
+          Button({ type: ButtonType.Normal }) {
+            Text("我已知晓")
+              .fontSize(24)
+              .fontColor(Color.White)
+          }
+          .width(300)
+          .height(60)
+          .borderRadius(10)
+          .margin({ top: 10 })
+          .onClick(() => {
+            this.confirmPrivacy = true
+          })
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor('#222222')
+        .justifyContent(FlexAlign.Center)
+        .visibility(this.confirmPrivacy === false ? Visibility.Visible : Visibility.None)
       }
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#222222')
-    .padding({ top: this.statusBarHeight })
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#222222')
+      .alignContent(Alignment.Top)
+      .padding({ top: this.statusBarHeight })
   }
 }
