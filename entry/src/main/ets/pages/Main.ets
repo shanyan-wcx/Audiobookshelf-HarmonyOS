@@ -62,7 +62,6 @@ class RouTmp {
 @Component
 export default struct main {
   @State statusBarHeight: number = 0;
-  @State showPrivacy: boolean = false
   @State index: number = 0;
   @State pageIndex: number = 0;
   @Provide @Watch('changePage') PageIndexTransfer: number = this.pageIndex
@@ -447,7 +446,7 @@ export default struct main {
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-    if(this.libraryItems.length >0){
+    if (this.libraryItems.length > 0) {
       this.showProgressTransfer = true
       this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
       this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
@@ -475,30 +474,32 @@ export default struct main {
   }
 
   async aboutToDisappear() {
-    let currentTime: number = 0
-    for (let element of this.allProgress) {
-      if (element.libraryItemId === this.nowPlayingItem.id) {
-        currentTime = element.currentTime
-        break
+    if (this.sessionId !== '') {
+      let currentTime: number = 0
+      for (let element of this.allProgress) {
+        if (element.libraryItemId === this.nowPlayingItem.id) {
+          currentTime = element.currentTime
+          break
+        }
       }
+      let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
+      let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
+      let updateSession: UpdateSession = {
+        deviceInfo: {
+          id: '00000000',
+          userId: this.userId,
+          deviceName: deviceInfo.productModel,
+          clientName: 'Abs-HarmonyOS',
+          clientVersion: bundleInfo.versionName
+        },
+        mediaPlayer: "avPlayer",
+        currentTime: currentTime,
+        timeListened: new Date().getTime() / 1000 - this.syncTime
+      }
+      console.log("会话当前时间", updateSession.currentTime)
+      console.log("会话汇报间隔", updateSession.timeListened)
+      await closeSession(this.sessionId, updateSession)
     }
-    let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
-    let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
-    let updateSession: UpdateSession = {
-      deviceInfo: {
-        id: '00000000',
-        userId: this.userId,
-        deviceName: deviceInfo.productModel,
-        clientName: 'Abs-HarmonyOS',
-        clientVersion: bundleInfo.versionName
-      },
-      mediaPlayer: "avPlayer",
-      currentTime: currentTime,
-      timeListened: new Date().getTime() / 1000 - this.syncTime
-    }
-    console.log("会话当前时间", updateSession.currentTime)
-    console.log("会话汇报间隔", updateSession.timeListened)
-    await closeSession(this.sessionId, updateSession)
   }
 
   onBackPress() {
@@ -688,7 +689,12 @@ export default struct main {
                   }, () => {
                     this.sidebarShow = false
                   })
-                  this.showPrivacy = true
+                  let want: Want = {
+                    action: 'ohos.want.action.viewData',
+                    entities: ['entity.system.browsable'],
+                    uri: 'https://privacy.shanyan.work'
+                  };
+                  context.startAbility(want)
                 })
             }
             .width('100%')
@@ -999,36 +1005,6 @@ export default struct main {
           }, 300)
         }
       })
-
-      Column() {
-        Column() {
-          Web({
-            src: "https://privacy.shanyan.work",
-            controller: this.webController
-          })
-            .width('100%')
-            .height('100%')
-            .backgroundColor('#333333')
-        }
-        .width(300)
-        .height(400)
-        .borderRadius(10)
-        .clip(true)
-        .shadow({
-          offsetX: 0,
-          offsetY: 0,
-          radius: 20,
-          color: '#95000000'
-        })
-      }
-      .width('100%')
-      .height('100%')
-      .backgroundColor('#80000000')
-      .justifyContent(FlexAlign.Center)
-      .onClick(() => {
-        this.showPrivacy = false
-      })
-      .visibility(this.showPrivacy === true ? Visibility.Visible : Visibility.None)
     }
     .width('100%')
     .height('100%')

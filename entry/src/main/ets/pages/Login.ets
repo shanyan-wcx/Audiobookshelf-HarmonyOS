@@ -4,8 +4,10 @@ import { getLogin } from '../api/Api'
 import { LoginInfo, Config } from '../api/Interface'
 import { readConfig, writeConfig } from '../util/fs'
 import { webview } from '@kit.ArkWeb';
+import { common, Want } from '@kit.AbilityKit';
 
 PersistentStorage.persistProp('confirmPrivacy', false);
+let context = getContext(this) as common.UIAbilityContext;
 
 let config: Config = {
   loginInfo: {
@@ -24,6 +26,7 @@ class RouTmp {
 @Entry
 @Component
 export default struct login {
+  @State confirm: boolean = false
   @State displayWidth: number = 0
   @State loginHeight: string = '45%'
   @State loginWidth: string = '85%'
@@ -128,126 +131,168 @@ export default struct login {
   }
 
   build() {
-      Stack() {
-        Column() {
-          Image($rawfile('logo.png'))
+    Stack() {
+      Column() {
+        Image($rawfile('logo.png'))
+          .width(60)
+          .height(60)
+        Row() {
+          Text("服务器")
             .width(60)
-            .height(60)
-          Row() {
-            Text("服务器")
-              .width(60)
-              .height(40)
-              .fontSize(18)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
-            TextInput({
-              placeholder: 'https://my.abs.com',
-              text: config.loginInfo.server
-            })
-              .width('70%')
-              .height(40)
-              .backgroundColor('#60ffffff')
-              .caretColor(Color.White)
-              .fontColor(Color.White)
-              .enterKeyType(EnterKeyType.Next)
-              .onChange((value) => {
-                this.loginInfo.server = value;
-              })
-          }
-          .width('85%')
-          .height('auto')
-          .alignItems(VerticalAlign.Center)
-          .justifyContent(FlexAlign.SpaceEvenly)
-
-          Row() {
-            Text("用户名")
-              .width(60)
-              .height(40)
-              .fontSize(18)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
-            TextInput({
-              placeholder: 'Username',
-              text: config.loginInfo.username
-            })
-              .width('70%')
-              .height(40)
-              .backgroundColor('#60ffffff')
-              .caretColor(Color.White)
-              .fontColor(Color.White)
-              .enterKeyType(EnterKeyType.Next)
-              .onChange((value) => {
-                this.loginInfo.username = value;
-              })
-          }
-          .width('85%')
-          .height('auto')
-          .alignItems(VerticalAlign.Center)
-          .justifyContent(FlexAlign.SpaceEvenly)
-
-          Row() {
-            Text("密码")
-              .width(60)
-              .height(40)
-              .fontSize(18)
-              .fontColor(Color.White)
-              .fontWeight(FontWeight.Bold)
-            TextInput({
-              placeholder: 'Password',
-              text: config.loginInfo.password
-            })
-              .width('70%')
-              .height(40)
-              .backgroundColor('#60ffffff')
-              .caretColor(Color.White)
-              .fontColor(Color.White)
-              .type(InputType.Password)
-              .enterKeyType(EnterKeyType.Next)
-              .onChange((value) => {
-                this.loginInfo.password = value;
-              })
-          }
-          .width('85%')
-          .height('auto')
-          .alignItems(VerticalAlign.Center)
-          .justifyContent(FlexAlign.SpaceEvenly)
-
-          Row() {
-            Toggle({ type: ToggleType.Checkbox })
-              .width(20)
-              .height(20)
-              .selectedColor('#60222222')
-              .onChange((value) => {
-                if (value === true) {
-                  config.loginInfo = this.loginInfo
-                  config.rememberLoginInfo = true
-                } else {
-                  config.loginInfo = {
-                    server: '',
-                    username: '',
-                    password: ''
-                  }
-                  config.rememberLoginInfo = false
-                }
-              })
-            Text("自动登录")
-              .width(100)
-              .height(20)
-              .fontSize(16)
-              .fontColor(Color.White)
-              .margin({ left: 5 })
-          }
-          .width('85%')
-          .height('auto')
-          .alignItems(VerticalAlign.Center)
-          .justifyContent(FlexAlign.Center)
-
-          Button("登录")
-            .fontSize(18)
-            .width(100)
             .height(40)
-            .backgroundColor('#aabbcc')
-            .onClick(async () => {
+            .fontSize(18)
+            .fontColor(Color.White)
+            .fontWeight(FontWeight.Bold)
+          TextInput({
+            placeholder: 'https://my.abs.com',
+            text: config.loginInfo.server
+          })
+            .width('70%')
+            .height(40)
+            .backgroundColor('#60ffffff')
+            .caretColor(Color.White)
+            .fontColor(Color.White)
+            .enterKeyType(EnterKeyType.Next)
+            .onChange((value) => {
+              this.loginInfo.server = value;
+            })
+        }
+        .width('85%')
+        .height('auto')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.SpaceEvenly)
+
+        Row() {
+          Text("用户名")
+            .width(60)
+            .height(40)
+            .fontSize(18)
+            .fontColor(Color.White)
+            .fontWeight(FontWeight.Bold)
+          TextInput({
+            placeholder: 'Username',
+            text: config.loginInfo.username
+          })
+            .width('70%')
+            .height(40)
+            .backgroundColor('#60ffffff')
+            .caretColor(Color.White)
+            .fontColor(Color.White)
+            .enterKeyType(EnterKeyType.Next)
+            .onChange((value) => {
+              this.loginInfo.username = value;
+            })
+        }
+        .width('85%')
+        .height('auto')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.SpaceEvenly)
+
+        Row() {
+          Text("密码")
+            .width(60)
+            .height(40)
+            .fontSize(18)
+            .fontColor(Color.White)
+            .fontWeight(FontWeight.Bold)
+          TextInput({
+            placeholder: 'Password',
+            text: config.loginInfo.password
+          })
+            .width('70%')
+            .height(40)
+            .backgroundColor('#60ffffff')
+            .caretColor(Color.White)
+            .fontColor(Color.White)
+            .type(InputType.Password)
+            .enterKeyType(EnterKeyType.Next)
+            .onChange((value) => {
+              this.loginInfo.password = value;
+            })
+        }
+        .width('85%')
+        .height('auto')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.SpaceEvenly)
+
+        Row() {
+          Toggle({ type: ToggleType.Checkbox })
+            .width(20)
+            .height(20)
+            .selectedColor('#60222222')
+            .onChange((value) => {
+              if (value === true) {
+                config.loginInfo = this.loginInfo
+                config.rememberLoginInfo = true
+              } else {
+                config.loginInfo = {
+                  server: '',
+                  username: '',
+                  password: ''
+                }
+                config.rememberLoginInfo = false
+              }
+            })
+          Text("自动登录")
+            .width(100)
+            .height(20)
+            .fontSize(16)
+            .fontColor(Color.White)
+            .margin({ left: 5 })
+        }
+        .width('85%')
+        .height('auto')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Center)
+
+        Row() {
+          Toggle({ type: ToggleType.Checkbox })
+            .width(20)
+            .height(20)
+            .selectedColor('#60222222')
+            .onChange((value) => {
+              if (value === true) {
+                this.confirm = true
+              } else {
+                this.confirm = false
+              }
+            })
+          Text("同意隐私政策")
+            .width(100)
+            .height(20)
+            .fontSize(16)
+            .fontColor(Color.White)
+            .margin({ left: 5 })
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .decoration({ type: TextDecorationType.Underline, color: Color.White })
+            .onClick(() => {
+              let want: Want = {
+                action: 'ohos.want.action.viewData',
+                entities: ['entity.system.browsable'],
+                uri: 'https://privacy.shanyan.work'
+              };
+              context.startAbility(want)
+            })
+        }
+        .width('85%')
+        .height('auto')
+        .alignItems(VerticalAlign.Center)
+        .justifyContent(FlexAlign.Center)
+        .visibility(this.confirmPrivacy === false ? Visibility.Visible : Visibility.None)
+
+        Button("登录")
+          .fontSize(18)
+          .width(100)
+          .height(40)
+          .backgroundColor('#aabbcc')
+          .onClick(async () => {
+            if (this.confirm === false && this.confirmPrivacy === false) {
+              promptAction.showToast({
+                message: '请阅读并同意隐私政策！',
+                duration: 500
+              });
+            } else {
               this.showProgress = true
               let info = await getLogin(this.loginInfo)
               if (info !== null) {
@@ -260,6 +305,7 @@ export default struct login {
                   message: '登陆成功！',
                   duration: 500
                 });
+                this.confirmPrivacy = true
                 router.replaceUrl({
                   url: 'pages/Main',
                   params: {
@@ -277,74 +323,35 @@ export default struct login {
                   duration: 500
                 });
               }
-            })
-        }
-        .height(this.loginHeight)
-        .width(this.loginWidth)
-        .border({ width: 0, radius: 20, color: Color.White })
-        .alignItems(HorizontalAlign.Center)
-        .justifyContent(FlexAlign.SpaceEvenly)
-        .margin({ top: this.loginTop })
-        .backgroundColor('#111111')
-
-        Column() {
-          LoadingProgress()
-            .width("100%")
-            .height(80)
-            .color(Color.White)
-        }
-        .height(this.loginHeight)
-        .width(this.loginWidth)
-        .border({ width: 0, radius: 20, color: Color.White })
-        .margin({ top: this.loginTop })
-        .justifyContent(FlexAlign.Center)
-        .backgroundColor('#75000000')
-        .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
-
-        Column() {
-          Column() {
-            Web({
-              src: "https://privacy.shanyan.work",
-              controller: this.webController
-            })
-              .width('100%')
-              .height('100%')
-              .backgroundColor('#333333')
-          }
-          .width(300)
-          .height(400)
-          .borderRadius(10)
-          .clip(true)
-          .shadow({
-            offsetX: 0,
-            offsetY: 0,
-            radius: 20,
-            color: '#95000000'
+            }
           })
-
-          Button({ type: ButtonType.Normal }) {
-            Text("我已知晓")
-              .fontSize(24)
-              .fontColor(Color.White)
-          }
-          .width(300)
-          .height(60)
-          .borderRadius(10)
-          .margin({ top: 10 })
-          .onClick(() => {
-            this.confirmPrivacy = true
-          })
-        }
-        .width('100%')
-        .height('100%')
-        .backgroundColor('#222222')
-        .justifyContent(FlexAlign.Center)
-        .visibility(this.confirmPrivacy === false ? Visibility.Visible : Visibility.None)
       }
-      .width('100%')
-      .height('100%')
-      .backgroundColor('#222222')
-      .alignContent(Alignment.Top)
-      .padding({ top: this.statusBarHeight })
+      .height(this.loginHeight)
+      .width(this.loginWidth)
+      .border({ width: 0, radius: 20, color: Color.White })
+      .alignItems(HorizontalAlign.Center)
+      .justifyContent(FlexAlign.SpaceEvenly)
+      .margin({ top: this.loginTop })
+      .backgroundColor('#111111')
+
+      Column() {
+        LoadingProgress()
+          .width("100%")
+          .height(80)
+          .color(Color.White)
+      }
+      .height(this.loginHeight)
+      .width(this.loginWidth)
+      .border({ width: 0, radius: 20, color: Color.White })
+      .margin({ top: this.loginTop })
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#75000000')
+      .visibility(this.showProgress === true ? Visibility.Visible : Visibility.None)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#222222')
+    .alignContent(Alignment.Top)
+    .padding({ top: this.statusBarHeight })
   }
 }
