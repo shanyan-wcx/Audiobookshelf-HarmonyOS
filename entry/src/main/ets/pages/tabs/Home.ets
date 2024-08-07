@@ -151,6 +151,7 @@ export default struct home {
         .width('100%')
         .height(this.coverWidth + 45)
         .justifyContent(FlexAlign.End)
+        .visibility(this.libraryItemsInProgress.length > 0 ? Visibility.Visible : Visibility.None)
 
         Column() {
           List() {
@@ -231,9 +232,22 @@ export default struct home {
         .width('100%')
         .height(this.coverWidth + 45)
         .justifyContent(FlexAlign.End)
+        .visibility(this.libraryItemsFinished.length > 0 ? Visibility.Visible : Visibility.None)
       }
       .width('100%')
       .height('100%')
+
+      Column() {
+        Text("开始收听")
+          .fontColor(Color.White)
+          .fontSize(32)
+          .margin({ top: 200 })
+          .visibility(this.libraryItemsFinished.length === 0 && this.libraryItemsInProgress.length === 0 ?
+          Visibility.Visible : Visibility.None)
+      }
+      .width('100%')
+      .height('100%')
+      .hitTestBehavior(HitTestMode.Transparent)
 
       Column() {
         Loading()

@@ -461,10 +461,10 @@ export async function getBookmarks(userId: string): Promise<Bookmark[]> {
     return bookmarks
   } catch (error) {
     console.error(JSON.stringify(error));
-    promptAction.showToast({
-      message: '获取系列失败，请检查网络！',
-      duration: 500
-    });
+    // promptAction.showToast({
+    //   message: '获取书签失败，请检查网络！',
+    //   duration: 500
+    // });
     return []
   }
 }
