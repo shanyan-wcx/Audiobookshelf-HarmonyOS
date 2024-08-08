@@ -44,6 +44,7 @@ import SeriesItems from './SeriesItems'
 import Play from './Play'
 import Setting from './Setting'
 import Stats from './Stats'
+import SearchItems from './Search';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -108,6 +109,8 @@ export default struct main {
   @Provide @Watch('changeSetting') jumpTime: number = 10
   @Provide mainWindow: window.Window | null = null
   @Provide prepared: boolean = false
+  @Provide searchTransfer: LibraryItem[] = []
+  @State searchValue: string = ''
   @State currentItem: LibraryItem = {
     id: '',
     ino: '',
@@ -291,7 +294,7 @@ export default struct main {
           .width(40)
           .height(40)
           .margin({ left: 15 })
-          .visibility(this.pageIndex === 3 || this.pageIndex === 4 ? Visibility.None : Visibility.Visible)
+          .visibility(this.pageIndex > 2 ? Visibility.None : Visibility.Visible)
         Button({ type: ButtonType.Normal }) {
           Image($rawfile('return.png'))
             .height(32)
@@ -302,7 +305,7 @@ export default struct main {
         .height(40)
         .margin({ left: 15 })
         .backgroundColor('#00000000')
-        .visibility(this.pageIndex === 3 || this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
+        .visibility(this.pageIndex > 2 ? Visibility.Visible : Visibility.None)
         .onClick(() => {
           if (this.backPageIndex === this.pageIndex) {
             this.backPageIndex = 0
@@ -344,6 +347,7 @@ export default struct main {
 
       Row() {
         TextInput({
+          text: $$this.searchValue,
           placeholder: "搜索 ..."
         })
           .enterKeyType(EnterKeyType.Search)
@@ -355,7 +359,23 @@ export default struct main {
           .fontColor('#95ffffff')
           .placeholderColor('#60ffffff')
           .onSubmit((value) => {
-
+            if (this.searchValue === '') {
+              promptAction.showToast({
+                message: '搜索关键词不能为空',
+                duration: 500
+              });
+            } else {
+              this.searchTransfer = []
+              this.libraryItems.forEach(element => {
+                if (element.media.metadata.title.includes(this.searchValue)) {
+                  this.searchTransfer.push(element)
+                }
+              })
+              if(this.PageIndexTransfer!==5){
+                this.backPageIndex = this.PageIndexTransfer
+              }
+              this.PageIndexTransfer = 5
+            }
           })
           .onClick(() => {
             animateTo({
@@ -503,7 +523,7 @@ export default struct main {
   }
 
   onBackPress() {
-    if (this.pageIndex === 3 || this.pageIndex === 4) {
+    if (this.pageIndex > 2) {
       if (this.backPageIndex === this.pageIndex) {
         this.backPageIndex = 0
       }
@@ -821,6 +841,15 @@ export default struct main {
             .width("100%")
             .height('100%')
             .visibility(this.pageIndex === 4 ? Visibility.Visible : Visibility.None)
+
+            Column() {
+              SearchItems()
+            }
+            .backgroundImage($rawfile('background.jpg'))
+            .backgroundImageSize(ImageSize.Cover)
+            .width("100%")
+            .height('100%')
+            .visibility(this.pageIndex === 5 ? Visibility.Visible : Visibility.None)
 
             Column()
               .width('100%')

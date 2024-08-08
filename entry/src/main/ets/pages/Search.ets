@@ -1,14 +1,14 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { Book, LibraryItem, Progress, Series } from '../api/Interface'
+import { LibraryItem, Progress, Series } from '../api/Interface'
 import Loading from './Loading'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
 
 @Component
-export default struct SeriesItems {
+export default struct SearchItems {
   @State displayWidth: number = 0
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
@@ -16,7 +16,7 @@ export default struct SeriesItems {
   @Consume itemTransfer: LibraryItem
   @Consume showProgressTransfer: boolean
   @Consume allProgress: Progress[]
-  @Consume seriesTransfer: Series
+  @Consume searchTransfer: LibraryItem[]
   @Consume backPageIndex: number
   @Consume sidebarShow: boolean
   @State mainWindow: window.Window | null = null
@@ -69,14 +69,20 @@ export default struct SeriesItems {
 
   build() {
     Column() {
+      Text("搜索结果")
+        .fontColor(Color.White)
+        .fontSize(24)
+        .margin({ top: 20 })
+        .width('100%')
+        .textAlign(TextAlign.Center)
       Stack() {
         Column() {
           Grid() {
-            ForEach(this.seriesTransfer.books, (book: Book, index) => {
+            ForEach(this.searchTransfer, (searchItem: LibraryItem, index) => {
               GridItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
                   Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${book.id}.jpg`) :
+                  fileUri.getUriFromPath(filesDir + `/covers/${searchItem.id}.jpg`) :
                   $rawfile('nocover.jpg'))
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
@@ -91,22 +97,22 @@ export default struct SeriesItems {
                         this.sidebarShow = false
                       })
                       for (let item of this.libraryItems) {
-                        if (item.id === book.id) {
+                        if (item.id === searchItem.id) {
                           this.itemTransfer = item
                           break
                         }
                       }
-                      this.backPageIndex = 4
+                      this.backPageIndex = 5
                       this.PageIndexTransfer = 3
                     })
                   Progress({
-                    value: this.getProgressById(book.id).progress * 100,
+                    value: this.getProgressById(searchItem.id).progress * 100,
                     total: 100,
                     type: ProgressType.Linear
                   })
                     .size({ width: '100%', height: 'auto' })
                     .style({ strokeWidth: 5 })
-                    .color(this.getProgressById(book.id).progress * 100 === 100 ?
+                    .color(this.getProgressById(searchItem.id).progress * 100 === 100 ?
                     Color.Green :
                     Color.Orange)
                 }
@@ -139,13 +145,15 @@ export default struct SeriesItems {
       }
       .width('100%')
       .height('100%')
-      .visibility(this.seriesTransfer.books.length !== 0 ? Visibility.Visible : Visibility.None)
+      .layoutWeight(1)
+      .visibility(this.searchTransfer.length !== 0 ? Visibility.Visible : Visibility.None)
 
       Text("没有项目")
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .visibility(this.seriesTransfer.books.length === 0 ? Visibility.Visible : Visibility.None)
+        .layoutWeight(1)
+        .visibility(this.searchTransfer.length === 0 ? Visibility.Visible : Visibility.None)
     }
     .width('100%')
     .height('100%')
