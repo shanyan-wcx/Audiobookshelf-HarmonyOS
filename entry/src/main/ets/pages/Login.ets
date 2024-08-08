@@ -1,9 +1,8 @@
-import { display, window } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { router, promptAction } from '@kit.ArkUI';
 import { getLogin } from '../api/Api'
 import { LoginInfo, Config } from '../api/Interface'
 import { readConfig, writeConfig } from '../util/fs'
-import { webview } from '@kit.ArkWeb';
 import { common, Want } from '@kit.AbilityKit';
 
 PersistentStorage.persistProp('confirmPrivacy', false);
@@ -43,12 +42,10 @@ export default struct login {
     password: ''
   }
   @StorageLink('confirmPrivacy') confirmPrivacy: boolean = false
-  private webController: WebviewController = new webview.WebviewController();
 
   async aboutToAppear() {
     if (this.confirmPrivacy === false) {
       console.log('首次启动')
-      this.webController.prefetchPage('https://privacy.shanyan.work');
     }
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()

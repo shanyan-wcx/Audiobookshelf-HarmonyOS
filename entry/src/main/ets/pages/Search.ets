@@ -152,7 +152,6 @@ export default struct SearchItems {
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .layoutWeight(1)
         .visibility(this.searchTransfer.length === 0 ? Visibility.Visible : Visibility.None)
     }
     .width('100%')

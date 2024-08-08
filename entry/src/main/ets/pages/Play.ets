@@ -606,6 +606,7 @@ export default struct Play {
               .backgroundColor('#333333')
               .onClick(async () => {
                 this.showMenu = false
+                this.sleepTime = 0
                 this.isPlayingTransfer = false
                 this.showPlayTransfer = false
                 this.startPlayingTransfer = false

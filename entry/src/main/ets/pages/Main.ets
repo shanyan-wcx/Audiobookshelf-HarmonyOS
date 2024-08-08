@@ -1,7 +1,6 @@
 import { media } from '@kit.MediaKit';
 import { router, promptAction, curves, window } from '@kit.ArkUI';
 import { common, Want } from '@kit.AbilityKit';
-import { webview } from '@kit.ArkWeb';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
@@ -80,7 +79,6 @@ export default struct main {
   @Provide @Watch('changePage') startPlayingTransfer: boolean = this.startPlaying
   @Provide libraryItems: LibraryItem[] = []
   private controller: TabsController = new TabsController();
-  private webController: WebviewController = new webview.WebviewController();
   private params: RouTmp = router.getParams() as RouTmp
   @Provide pageStack: NavPathStack = new NavPathStack()
   @Provide allProgress: Progress[] = []
