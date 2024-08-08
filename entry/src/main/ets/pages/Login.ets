@@ -14,7 +14,7 @@ let config: Config = {
     username: '',
     password: ''
   },
-  rememberLoginInfo: false,
+  autoLogin: false,
   jumpTime: 10
 }
 
@@ -81,7 +81,7 @@ export default struct login {
     })
     if (this.params.firstLogin === true) {
       config = readConfig()
-      if (config.rememberLoginInfo === true) {
+      if (config.autoLogin === true) {
         this.loginInfo.server = config.loginInfo.server
         this.loginInfo.username = config.loginInfo.username
         this.loginInfo.password = config.loginInfo.password
@@ -113,7 +113,7 @@ export default struct login {
       }
     } else {
       config.loginInfo = this.loginInfo
-      config.rememberLoginInfo = false
+      config.autoLogin = false
       writeConfig(config)
     }
   }
@@ -149,6 +149,7 @@ export default struct login {
             .backgroundColor('#60ffffff')
             .caretColor(Color.White)
             .fontColor(Color.White)
+            .type(InputType.URL)
             .enterKeyType(EnterKeyType.Next)
             .onChange((value) => {
               this.loginInfo.server = value;
@@ -175,6 +176,7 @@ export default struct login {
             .backgroundColor('#60ffffff')
             .caretColor(Color.White)
             .fontColor(Color.White)
+            .type(InputType.USER_NAME)
             .enterKeyType(EnterKeyType.Next)
             .onChange((value) => {
               this.loginInfo.username = value;
@@ -220,14 +222,14 @@ export default struct login {
             .onChange((value) => {
               if (value === true) {
                 config.loginInfo = this.loginInfo
-                config.rememberLoginInfo = true
+                config.autoLogin = true
               } else {
                 config.loginInfo = {
                   server: '',
                   username: '',
                   password: ''
                 }
-                config.rememberLoginInfo = false
+                config.autoLogin = false
               }
             })
           Text("自动登录")

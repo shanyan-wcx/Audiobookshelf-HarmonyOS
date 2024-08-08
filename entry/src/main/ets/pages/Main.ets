@@ -369,7 +369,7 @@ export default struct main {
                   this.searchTransfer.push(element)
                 }
               })
-              if(this.PageIndexTransfer!==5){
+              if (this.PageIndexTransfer !== 5) {
                 this.backPageIndex = this.PageIndexTransfer
               }
               this.PageIndexTransfer = 5
@@ -465,28 +465,26 @@ export default struct main {
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-    // if (this.libraryItems.length > 0) {
-      this.showProgressTransfer = true
-      this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-      this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
-      this.series = await getSeries(this.selectedLibraryId)
-      this.authors = await getAuthors(this.selectedLibraryId)
-      this.bookmarks = await getBookmarks(this.userId)
-      this.listeningStats = await getStats()
-      await Promise.all(this.libraryItems.map(async (element) => {
-        let progress = await getProgress(element.id)
-        this.allProgress.push(progress)
-        let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-        if (coverStatus === false) {
-          try {
-            await getCover(element.id)
-          } catch (error) {
-            console.error(JSON.stringify(error));
-            console.log("获取封面失败。")
-          }
+    this.showProgressTransfer = true
+    this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+    this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+    this.series = await getSeries(this.selectedLibraryId)
+    this.authors = await getAuthors(this.selectedLibraryId)
+    this.bookmarks = await getBookmarks(this.userId)
+    this.listeningStats = await getStats()
+    await Promise.all(this.libraryItems.map(async (element) => {
+      let progress = await getProgress(element.id)
+      this.allProgress.push(progress)
+      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
+      if (coverStatus === false) {
+        try {
+          await getCover(element.id)
+        } catch (error) {
+          console.error(JSON.stringify(error));
+          console.log("获取封面失败。")
         }
-      }));
-    // }
+      }
+    }));
     let config = readConfig()
     this.jumpTime = config.jumpTime
     this.showProgressTransfer = false

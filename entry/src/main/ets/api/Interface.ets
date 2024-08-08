@@ -11,7 +11,7 @@ export interface User {
 
 export interface Config {
   loginInfo: LoginInfo,
-  rememberLoginInfo: Boolean,
+  autoLogin: Boolean,
   jumpTime: number
 }
 

@@ -1,8 +1,9 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
+import { http } from '@kit.NetworkKit';
 import { promptAction } from '@kit.ArkUI';
 import { bundleManager } from '@kit.AbilityKit';
 import { rcp } from '@kit.RemoteCommunicationKit';
-import { deviceInfo } from '@kit.BasicServicesKit';
+import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import {
   LoginInfo,
   User,
@@ -51,9 +52,9 @@ export async function getLogin(loginInfo: LoginInfo): Promise<string[] | null> {
       baseURL: baseUrl,
       timeout: 10000
     })
-    console.log("Token:", JSON.stringify(response.data.user.token));
     authToken = response.data.user.token
     userId = response.data.user.id
+    console.log("Token", authToken);
     return [authToken, userId]
   } catch (error) {
     console.error(JSON.stringify(error));

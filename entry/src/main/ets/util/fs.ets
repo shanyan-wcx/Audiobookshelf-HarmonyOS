@@ -15,7 +15,7 @@ export function createConfig(): void {
       username: '',
       password: ''
     },
-    rememberLoginInfo: false,
+    autoLogin: false,
     jumpTime: 10
   }
   // fs.unlinkSync(filesDir + '/config.json')
