@@ -1,7 +1,6 @@
-import { display, window } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { Book, Series } from '../../api/Interface'
+import { Series } from '../../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -45,7 +44,8 @@ export default struct collection {
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .visibility(this.collections.length === 0 ? Visibility.Visible : Visibility.None)
+        .visibility(this.collections.length === 0 && this.showProgressTransfer === false ? Visibility.Visible :
+        Visibility.None)
     }
     .width('100%')
     .height('100%')

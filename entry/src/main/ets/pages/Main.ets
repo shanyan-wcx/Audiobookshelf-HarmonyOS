@@ -457,6 +457,7 @@ export default struct main {
   async aboutToAppear() {
     this.mainWindow = await window.getLastWindow(getContext(this))
     this.getStatusBarHeight()
+    this.showProgressTransfer = true
     libraries = await getLibraries()
     this.selectedLibrary = libraries[0].name
     this.selectedLibraryId = libraries[0].id
@@ -465,7 +466,6 @@ export default struct main {
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
     this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-    this.showProgressTransfer = true
     this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
     this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
     this.series = await getSeries(this.selectedLibraryId)

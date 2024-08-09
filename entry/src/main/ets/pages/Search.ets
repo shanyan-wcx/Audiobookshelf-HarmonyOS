@@ -1,7 +1,7 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { LibraryItem, Progress, Series } from '../api/Interface'
+import { fileUri } from '@kit.CoreFileKit';
+import { LibraryItem, Progress } from '../api/Interface'
 import Loading from './Loading'
 
 let context = getContext(this) as common.UIAbilityContext;

@@ -1,9 +1,8 @@
 import axios, { Axios, AxiosResponse } from '@ohos/axios'
-import { http } from '@kit.NetworkKit';
 import { promptAction } from '@kit.ArkUI';
 import { bundleManager } from '@kit.AbilityKit';
 import { rcp } from '@kit.RemoteCommunicationKit';
-import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import {
   LoginInfo,
   User,

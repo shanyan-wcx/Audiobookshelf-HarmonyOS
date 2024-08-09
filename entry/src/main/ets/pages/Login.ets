@@ -82,6 +82,7 @@ export default struct login {
     if (this.params.firstLogin === true) {
       config = readConfig()
       if (config.autoLogin === true) {
+        this.showProgress = true
         this.loginInfo.server = config.loginInfo.server
         this.loginInfo.username = config.loginInfo.username
         this.loginInfo.password = config.loginInfo.password
@@ -89,6 +90,7 @@ export default struct login {
         if (info !== null) {
           this.apitoken = info[0]
           this.userId = info[1]
+          this.showProgress = false
           console.info("登陆成功！")
           promptAction.showToast({
             message: '登陆成功！',
@@ -104,6 +106,7 @@ export default struct login {
             }
           })
         } else {
+          this.showProgress = false
           console.error("登陆失败！")
           promptAction.showToast({
             message: '登陆失败！',

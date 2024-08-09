@@ -1,4 +1,4 @@
-import { display, window } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { Author } from '../../api/Interface'
 
 @Component
@@ -6,6 +6,7 @@ export default struct author {
   @State displayWidth: number = 0
   @State columnsTemplate: string = "1fr"
   @Consume PageIndexTransfer: number
+  @Consume showProgressTransfer: boolean
   @State libraryId: string = ''
   @Consume authors: Author[]
   @Consume backPageIndex: number
@@ -91,7 +92,8 @@ export default struct author {
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .visibility(this.authors.length === 0 ? Visibility.Visible : Visibility.None)
+        .visibility(this.authors.length === 0 && this.showProgressTransfer === false ? Visibility.Visible :
+        Visibility.None)
     }
     .width('100%')
     .height('100%')

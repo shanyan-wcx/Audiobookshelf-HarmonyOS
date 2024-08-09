@@ -1,6 +1,6 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { Book, LibraryItem, Progress, Series } from '../api/Interface'
 import Loading from './Loading'
 

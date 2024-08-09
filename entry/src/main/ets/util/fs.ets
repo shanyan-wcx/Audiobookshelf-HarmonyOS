@@ -2,7 +2,6 @@ import { fileIo as fs } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
 import { buffer } from '@kit.ArkTS';
 import { image } from '@kit.ImageKit';
-import { BusinessError } from '@kit.BasicServicesKit';
 import { Config } from '../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;

@@ -1,6 +1,6 @@
-import { display, window } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { Book, Series } from '../../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -31,15 +31,15 @@ export default struct series {
       this.columnsTemplate = "1fr 1fr 1fr"
     }
     this.mainWindow.on('windowSizeChange', (size) => {
-        this.displayWidth = px2vp(size.width)
-        if (this.displayWidth >= 320 && this.displayWidth < 550) {
-          this.columnsTemplate = "1fr"
-        } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
-          this.columnsTemplate = "1fr 1fr"
-        } else if (this.displayWidth >= 840) {
-          this.columnsTemplate = "1fr 1fr 1fr"
-        }
-      })
+      this.displayWidth = px2vp(size.width)
+      if (this.displayWidth >= 320 && this.displayWidth < 550) {
+        this.columnsTemplate = "1fr"
+      } else if (this.displayWidth >= 550 && this.displayWidth < 840) {
+        this.columnsTemplate = "1fr 1fr"
+      } else if (this.displayWidth >= 840) {
+        this.columnsTemplate = "1fr 1fr 1fr"
+      }
+    })
   }
 
   build() {
@@ -115,7 +115,8 @@ export default struct series {
         .fontColor(Color.White)
         .fontSize(32)
         .margin({ top: 200 })
-        .visibility(this.series.length === 0 ? Visibility.Visible : Visibility.None)
+        .visibility(this.series.length === 0 && this.showProgressTransfer === false ? Visibility.Visible :
+        Visibility.None)
     }
     .width('100%')
     .height('100%')

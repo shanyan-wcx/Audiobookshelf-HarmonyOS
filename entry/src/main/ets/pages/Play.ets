@@ -1,4 +1,4 @@
-import { display, window, promptAction, curves } from '@kit.ArkUI';
+import { window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
@@ -9,7 +9,6 @@ import { bundleManager } from '@kit.AbilityKit';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { LibraryItem, Chapter, Track, UpdateSession, Progress, PlayItem, Bookmark } from '../api/Interface'
 import { closeSession, createBookmark, deleteBookmark, getBookmarks } from '../api/Api'
-import { radio } from '@kit.TelephonyKit';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -729,7 +728,7 @@ export default struct Play {
                 radius: 5,
                 color: Color.White
               })
-              .placeholderColor('#cccccc')
+              .placeholderColor(Color.Gray)
               .caretColor(Color.White)
               .fontColor(Color.White)
             Button({ type: ButtonType.Normal }) {
@@ -766,7 +765,7 @@ export default struct Play {
           .width('100%')
           .height(60)
           .padding({ left: 20, right: 15 })
-          .backgroundColor('#383838')
+          .backgroundColor('#232323')
           .onClick(() => {
           })
         }

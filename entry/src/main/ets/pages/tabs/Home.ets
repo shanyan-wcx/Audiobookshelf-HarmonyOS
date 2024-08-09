@@ -1,6 +1,6 @@
-import { display, window } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
 import Loading from '../Loading'
 
@@ -242,7 +242,8 @@ export default struct home {
           .fontColor(Color.White)
           .fontSize(32)
           .margin({ top: 200 })
-          .visibility(this.libraryItemsFinished.length === 0 && this.libraryItemsInProgress.length === 0 ?
+          .visibility(this.libraryItemsFinished.length === 0 && this.libraryItemsInProgress.length === 0 &&
+            this.showProgressTransfer === false ?
           Visibility.Visible : Visibility.None)
       }
       .width('100%')
