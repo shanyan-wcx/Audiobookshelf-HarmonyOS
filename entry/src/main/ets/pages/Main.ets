@@ -5,6 +5,7 @@ import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
+import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { readConfig, writeConfig } from '../util/fs'
 import {
   getLogout,
@@ -230,6 +231,14 @@ export default struct main {
       } else {
         console.info("设置Session状态", state);
       }
+    });
+  }
+
+  async stopContinuousTask() {
+    backgroundTaskManager.stopBackgroundRunning(context).then(() => {
+      console.info(`停止长时任务。`);
+    }).catch((err: BusinessError) => {
+      console.error(`停止长时任务出错，代码 ${err.code}，错误信息 ${err.message}`);
     });
   }
 
@@ -517,6 +526,14 @@ export default struct main {
       console.log("会话汇报间隔", updateSession.timeListened)
       await closeSession(this.sessionId, updateSession)
     }
+    this.sleepTime = 0
+    this.isPlayingTransfer = false
+    this.showPlayTransfer = false
+    this.startPlayingTransfer = false
+    this.avPlayer!.stop()
+    await this.session!.destroy()
+    console.log("Session已销毁。")
+    await this.stopContinuousTask();
   }
 
   onBackPress() {
