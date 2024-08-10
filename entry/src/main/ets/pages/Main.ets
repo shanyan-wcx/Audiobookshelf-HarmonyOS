@@ -533,7 +533,6 @@ export default struct main {
     this.avPlayer!.stop()
     await this.session!.destroy()
     console.log("Session已销毁。")
-    await this.stopContinuousTask();
   }
 
   onBackPress() {

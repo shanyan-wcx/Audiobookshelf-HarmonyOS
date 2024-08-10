@@ -177,8 +177,8 @@ export default struct Detail {
     this.session!.on('seek', (time: number) => {
       this.avPlayer!.seek(time)
       this.isPlayingTransfer === true ?
-      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, time/1000) :
-      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, time/1000)
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, time / 1000) :
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, time / 1000)
     });
     this.session!.on('setSpeed', (time) => {
       console.log('触发setSpeed行为。')
@@ -316,11 +316,11 @@ export default struct Detail {
           break;
         case 'playing':
           console.info('播放器开始播放。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime)
           break;
         case 'paused':
           console.info('播放器暂停。');
-          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE)
+          this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
           break;
         case 'completed':
           console.info('播放完毕。');

@@ -348,10 +348,10 @@ export async function updateProgress(itemId: string, progress: UpdateProgress) {
     console.log("上传进度成功", response);
   } catch (error) {
     console.error(JSON.stringify(error));
-    promptAction.showToast({
-      message: '上传进度失败，请检查网络！',
-      duration: 500
-    });
+    // promptAction.showToast({
+    //   message: '上传进度失败，请检查网络！',
+    //   duration: 500
+    // });
   }
 }
 
@@ -404,10 +404,10 @@ export async function syncSession(sessionId: string, updateSession: UpdateSessio
     console.log("同步会话成功", response.data);
   } catch (error) {
     console.error(JSON.stringify(error));
-    promptAction.showToast({
-      message: '同步会话失败，请检查网络！',
-      duration: 500
-    });
+    // promptAction.showToast({
+    //   message: '同步会话失败，请检查网络！',
+    //   duration: 500
+    // });
   }
 }
 
