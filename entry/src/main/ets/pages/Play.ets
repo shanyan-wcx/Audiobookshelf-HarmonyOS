@@ -295,8 +295,7 @@ export default struct Play {
         .width("100%")
         .justifyContent(FlexAlign.SpaceBetween)
 
-        Image(this.showProgressTransfer === false ?
-        fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
+        Image(this.server + `/api/items/${this.itemTransfer.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
           .alt($rawfile('nocover.jpg'))
           .width(this.coverWidth)
           .aspectRatio(1)

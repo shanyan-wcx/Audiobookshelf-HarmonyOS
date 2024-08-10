@@ -11,7 +11,6 @@ import {
   getLogout,
   getLibraries,
   getLibrarieItems,
-  getCover,
   getProgress,
   getLibrarieItemsInProgress,
   getLibrarieItemsFinished,
@@ -199,22 +198,6 @@ export default struct main {
     writeConfig(config)
   }
 
-  async setSessionInfo() {
-    let metadata: AVSessionManager.AVMetadata = {
-      assetId: '0',
-      title: this.nowPlayingChapters[this.nowPlayingIndex].title,
-      mediaImage: fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`),
-      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
-      artist: this.nowPlayingItem.media.metadata.authorName,
-      skipIntervals: 10
-    };
-    this.session!.setAVMetadata(metadata).then(() => {
-      console.info(`SetAVMetadata successfully`);
-    }).catch((err: BusinessError) => {
-      console.error(`Failed to set AVMetadata. Code: ${err.code}, message: ${err.message}`);
-    });
-  }
-
   async setPlaybackState(state: number, time: number) {
     let playbackState: AVSessionManager.AVPlaybackState = {
       state: state,
@@ -272,15 +255,6 @@ export default struct main {
               this.authors = await getAuthors(this.selectedLibraryId)
               await Promise.all(this.libraryItems.map(async (element) => {
                 this.allProgress.push(await getProgress(element.id))
-                let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-                if (coverStatus === false) {
-                  try {
-                    await getCover(element.id)
-                  } catch (error) {
-                    console.error(JSON.stringify(error));
-                    console.log("获取封面失败。")
-                  }
-                }
               }));
               this.showProgressTransfer = false
             }
@@ -484,15 +458,6 @@ export default struct main {
     await Promise.all(this.libraryItems.map(async (element) => {
       let progress = await getProgress(element.id)
       this.allProgress.push(progress)
-      let coverStatus = fs.accessSync(filesDir + `/covers/${element.id}.jpg`)
-      if (coverStatus === false) {
-        try {
-          await getCover(element.id)
-        } catch (error) {
-          console.error(JSON.stringify(error));
-          console.log("获取封面失败。")
-        }
-      }
     }));
     let config = readConfig()
     this.jumpTime = config.jumpTime
@@ -878,8 +843,7 @@ export default struct main {
               })
 
             Row() {
-              Image(this.showProgressTransfer === false ?
-              fileUri.getUriFromPath(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`) : $rawfile('nocover.jpg'))
+              Image(this.server + `/api/items/${this.nowPlayingItem.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                 .alt($rawfile('nocover.jpg'))
                 .width(60)
                 .aspectRatio(1)

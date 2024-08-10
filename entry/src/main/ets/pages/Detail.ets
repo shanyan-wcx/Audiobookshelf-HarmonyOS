@@ -1,7 +1,6 @@
 import { window, promptAction } from '@kit.ArkUI';
 import { media } from '@kit.MediaKit';
 import { common, wantAgent, WantAgent } from '@kit.AbilityKit';
-import { fileUri } from '@kit.CoreFileKit';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
@@ -23,7 +22,8 @@ import {
   syncSession,
   closeSession,
   getLibrarieItemsFinished,
-  getLibrarieItemsInProgress
+  getLibrarieItemsInProgress,
+  getCover
 } from '../api/Api'
 import { getPixelMap } from '../util/fs'
 
@@ -93,7 +93,7 @@ export default struct Detail {
     let metadata: AVSessionManager.AVMetadata = {
       assetId: '0',
       title: this.nowPlayingChapters[this.nowPlayingIndex].title,
-      mediaImage: getPixelMap(filesDir + `/covers/${this.nowPlayingItem.id}.jpg`),
+      mediaImage: getPixelMap(await getCover(this.nowPlayingItem.id)),
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
       artist: this.nowPlayingItem.media.metadata.authorName,
       skipIntervals: 10
@@ -459,8 +459,8 @@ export default struct Detail {
   build() {
     Stack() {
       Column() {
-        Image(this.showProgressTransfer === false ?
-        fileUri.getUriFromPath(filesDir + `/covers/${this.itemTransfer.id}.jpg`) : $rawfile('nocover.jpg'))
+        Image(this.server + `/api/items/${this.itemTransfer.id}/cover?format=jpeg&width=1024` +
+          `&token=${this.apitoken}`)
           .alt($rawfile('nocover.jpg'))
           .width(this.coverWidth)
           .aspectRatio(1)

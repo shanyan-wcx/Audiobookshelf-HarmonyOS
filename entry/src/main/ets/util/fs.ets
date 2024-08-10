@@ -49,35 +49,8 @@ export function writeConfig(config: Config) {
   fs.closeSync(file);
 }
 
-export function createCoverDir() {
-  let dirStatus = fs.accessSync(filesDir + '/covers')
-  if (dirStatus === false) {
-    console.log("封面目录不存在。")
-    fs.mkdirSync(filesDir + '/covers', false)
-    console.log("创建封面目录", filesDir + '/covers')
-  } else {
-    console.log("封面目录存在。")
-    console.log("封面目录位置", filesDir + '/covers')
-  }
-}
-
-export function downloadCover(coverName: string, cover: ArrayBuffer) {
-  let coverPath: string = filesDir + `/covers/${coverName}.jpg`
-  let file = fs.openSync(coverPath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE)
-  fs.writeSync(file.fd, cover);
-  fs.closeSync(file);
-}
-
-export function clearCovers() {
-  let covers = fs.listFileSync(filesDir + '/covers')
-  covers.forEach(cover => {
-    fs.unlinkSync(filesDir + "/covers/" + cover)
-  });
-  console.log("清空封面")
-}
-
-export function getPixelMap(imgPath: string): PixelMap {
-  const imageSource: image.ImageSource = image.createImageSource(imgPath);
+export function getPixelMap(cover: ArrayBuffer): PixelMap {
+  const imageSource: image.ImageSource = image.createImageSource(cover);
   let pixelMap = imageSource.createPixelMapSync()
   return pixelMap
 }

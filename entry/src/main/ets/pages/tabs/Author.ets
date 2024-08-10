@@ -12,6 +12,8 @@ export default struct author {
   @Consume backPageIndex: number
   @Consume sidebarShow: boolean
   @Consume mainWindow: window.Window
+  @Consume server: string
+  @Consume apitoken: string
 
   async aboutToAppear() {
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
@@ -40,7 +42,7 @@ export default struct author {
         ForEach(this.authors, (item: Author, index) => {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
-              Image("")
+              Image(this.server + `/api/authors/${item.id}/image?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                 .alt($rawfile('noprofile.jpg'))
                 .width('100%')
                 .aspectRatio(3 / 4)

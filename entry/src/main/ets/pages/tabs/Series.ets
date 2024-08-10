@@ -1,6 +1,5 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileUri } from '@kit.CoreFileKit';
 import { Book, Series } from '../../api/Interface'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -20,6 +19,8 @@ export default struct series {
   @Consume backPageIndex: number
   @Consume sidebarShow: boolean
   @Consume mainWindow: window.Window
+  @Consume server: string
+  @Consume apitoken: string
 
   async aboutToAppear() {
     this.displayWidth = px2vp(this.mainWindow.getWindowProperties().windowRect.width)
@@ -49,9 +50,7 @@ export default struct series {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
               ForEach(item.books.reverse(), (item2: Book, index2) => {
-                Image(this.showProgressTransfer === false ?
-                fileUri.getUriFromPath(filesDir + `/covers/${item2.id}.jpg`) :
-                $rawfile('nocover.jpg'))
+                Image(this.server + `/api/items/${item2.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                   .alt($rawfile('nocover.jpg'))
                   .height('100%')
                   .aspectRatio(1)

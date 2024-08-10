@@ -19,7 +19,6 @@ import {
   ListeningStats,
   Bookmark
 } from './Interface'
-import { downloadCover } from '../util/fs'
 
 axios.defaults.headers.post['Content-Type'] = 'application/json'
 
@@ -215,7 +214,7 @@ export async function getCover(itemId: string) {
           params: { responseType: 'arraybuffer' },
           timeout: 10000
         })
-    downloadCover(itemId, response.data)
+    return response.data
   } catch (error) {
     console.error(JSON.stringify(error));
     promptAction.showToast({

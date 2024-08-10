@@ -1,6 +1,5 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
 import Loading from '../Loading'
 
@@ -34,6 +33,8 @@ export default struct library {
   @Consume backPageIndex: number
   @Consume sidebarShow: boolean
   @Consume mainWindow: window.Window
+  @Consume server: string
+  @Consume apitoken: string
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -101,9 +102,7 @@ export default struct library {
             ForEach(this.libraryItems, (item: LibraryItem, index) => {
               GridItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
-                  Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
-                  $rawfile('nocover.jpg'))
+                  Image(this.server + `/api/items/${item.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
                     .aspectRatio(1)

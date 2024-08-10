@@ -1,6 +1,5 @@
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fileUri } from '@kit.CoreFileKit';
 import { LibraryItem, Progress } from '../../api/Interface'
 import Loading from '../Loading'
 
@@ -22,6 +21,8 @@ export default struct home {
   @Consume libraryItems: LibraryItem[]
   @Consume sidebarShow: boolean
   @Consume mainWindow: window.Window
+  @Consume server: string
+  @Consume apitoken: string
 
   getProgressById(itemId: string): Progress {
     let progress: Progress = {
@@ -77,9 +78,7 @@ export default struct home {
             ForEach(this.libraryItemsInProgress, (item: LibraryItem, index) => {
               ListItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
-                  Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
-                  $rawfile('nocover.jpg'))
+                  Image(this.server + `/api/items/${item.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
                     .aspectRatio(1)
@@ -158,9 +157,7 @@ export default struct home {
             ForEach(this.libraryItemsFinished, (item: LibraryItem, index) => {
               ListItem() {
                 Stack({ alignContent: Alignment.Bottom }) {
-                  Image(this.showProgressTransfer === false ?
-                  fileUri.getUriFromPath(filesDir + `/covers/${item.id}.jpg`) :
-                  $rawfile('nocover.jpg'))
+                  Image(this.server + `/api/items/${item.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
                     .alt($rawfile('nocover.jpg'))
                     .width('100%')
                     .aspectRatio(1)
