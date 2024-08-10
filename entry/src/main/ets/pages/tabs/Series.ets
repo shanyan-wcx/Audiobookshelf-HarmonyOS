@@ -90,6 +90,7 @@ export default struct series {
           .backgroundColor("#cccccc")
           .onClick(async () => {
             this.seriesTransfer = item
+            this.seriesTransfer.books = this.seriesTransfer.books.reverse()
             this.backPageIndex = 0
             this.PageIndexTransfer = 4
             animateTo({

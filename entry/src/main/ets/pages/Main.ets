@@ -248,14 +248,21 @@ export default struct main {
               this.showProgressTransfer = true
               this.allProgress = []
               console.log("获取媒体库项目", this.selectedLibraryId)
-              this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
-              this.series = await getSeries(this.selectedLibraryId)
-              this.authors = await getAuthors(this.selectedLibraryId)
+              this.libraryItems = (await getLibrarieItems(this.selectedLibraryId)).reverse()
               await Promise.all(this.libraryItems.map(async (element) => {
                 this.allProgress.push(await getProgress(element.id))
               }));
+              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              this.libraryItemsInProgress = (await getLibrarieItemsInProgress(this.selectedLibraryId)).sort((a, b) => {
+                const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+                const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+                if (progressA && progressB) {
+                  return progressB.lastUpdate - progressA.lastUpdate;
+                }
+                return 0;
+              });
+              this.series = await getSeries(this.selectedLibraryId)
+              this.authors = (await getAuthors(this.selectedLibraryId)).sort((a, b) => a.name.localeCompare(b.name, 'zh'))
               this.showProgressTransfer = false
             }
           })
@@ -448,17 +455,24 @@ export default struct main {
     this.avPlayer = await media.createAVPlayer();
     this.allProgress = []
     console.log("获取媒体库项目", this.selectedLibraryId)
-    this.libraryItems = await getLibrarieItems(this.selectedLibraryId)
-    this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-    this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
-    this.series = await getSeries(this.selectedLibraryId)
-    this.authors = await getAuthors(this.selectedLibraryId)
-    this.bookmarks = await getBookmarks(this.userId)
-    this.listeningStats = await getStats()
+    this.libraryItems = (await getLibrarieItems(this.selectedLibraryId)).reverse()
     await Promise.all(this.libraryItems.map(async (element) => {
       let progress = await getProgress(element.id)
       this.allProgress.push(progress)
     }));
+    this.libraryItemsInProgress = (await getLibrarieItemsInProgress(this.selectedLibraryId)).sort((a, b) => {
+      const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+      const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+      if (progressA && progressB) {
+        return progressB.lastUpdate - progressA.lastUpdate;
+      }
+      return 0;
+    });
+    this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+    this.series = await getSeries(this.selectedLibraryId)
+    this.authors = (await getAuthors(this.selectedLibraryId)).sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+    this.bookmarks = await getBookmarks(this.userId)
+    this.listeningStats = await getStats()
     let config = readConfig()
     this.jumpTime = config.jumpTime
     this.showProgressTransfer = false

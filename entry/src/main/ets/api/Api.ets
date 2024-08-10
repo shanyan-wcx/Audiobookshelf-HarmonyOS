@@ -380,7 +380,7 @@ export async function getSeries(libraryId: string): Promise<Series[]> {
   try {
     const response: AxiosResponse =
       await api.get<string, AxiosResponse<string>, null>(`/api/libraries/${libraryId}/series`, {
-        params: { limit: 99999, minified: true },
+        params: { limit: 99999 },
         timeout: 10000
       })
     series = response.data.results
