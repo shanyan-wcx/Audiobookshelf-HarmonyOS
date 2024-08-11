@@ -23,7 +23,8 @@ import {
   closeSession,
   getLibrarieItemsFinished,
   getLibrarieItemsInProgress,
-  getCover
+  getCover,
+  pingServer
 } from '../api/Api'
 import { getPixelMap } from '../util/fs'
 
@@ -88,6 +89,7 @@ export default struct Detail {
   @Consume sleepTime: number
   @Consume bookmarks: Bookmark[]
   @Consume nowPlayingBookmarks: Bookmark[]
+  @State netStatus: boolean = true
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -234,6 +236,7 @@ export default struct Detail {
       }
       this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
       if (this.elapsedTime >= 1000) {
+        this.netStatus = await pingServer(this.server)
         let bundleFlags = bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT;
         let bundleInfo = bundleManager.getBundleInfoForSelfSync(bundleFlags)
         let upProgress: UpdateProgress = {
@@ -258,7 +261,7 @@ export default struct Detail {
           if (element.libraryItemId === this.nowPlayingItem.id) {
             element.duration = this.nowPlayingItem.media.duration
             element.currentTime = this.nowTrackStartTime + this.nowPlayedTime
-            element.progress = element.currentTime / element.duration
+            element.progress = Math.round(element.currentTime / element.duration * 100) / 100
             element.isFinished = element.progress === 1 ? true : false
             upProgress.duration = element.duration
             upProgress.currentTime = element.currentTime
@@ -268,18 +271,33 @@ export default struct Detail {
             break
           }
         }
-        console.log("当前时间", upProgress.currentTime)
-        console.log("当前进度", upProgress.progress)
-        await updateProgress(this.nowPlayingItem.id, upProgress)
-        console.log("会话当前时间", updateSession.currentTime)
-        console.log("会话汇报间隔", updateSession.timeListened)
-        await syncSession(this.sessionId, updateSession)
-        this.itemProgress = this.getProgressById(this.itemTransfer.id)
-        this.itemDuration = this.getDuration(this.itemTransfer.id)
-        this.syncTime = new Date().getTime() / 1000
-        this.elapsedTime = 0
-        this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-        this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+        if (this.netStatus === true) {
+          console.log("当前时间", upProgress.currentTime)
+          console.log("当前进度", upProgress.progress)
+          await updateProgress(this.nowPlayingItem.id, upProgress)
+          console.log("会话当前时间", updateSession.currentTime)
+          console.log("会话汇报间隔", updateSession.timeListened)
+          await syncSession(this.sessionId, updateSession)
+          this.itemProgress = this.getProgressById(this.itemTransfer.id)
+          this.itemDuration = this.getDuration(this.itemTransfer.id)
+          this.syncTime = new Date().getTime() / 1000
+          this.elapsedTime = 0
+          let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+          if (tmpItemsInProgress.length > 0) {
+            this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
+              const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+              const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+              if (progressA && progressB) {
+                return progressB.lastUpdate - progressA.lastUpdate;
+              }
+              return 0;
+            });
+          }
+          let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+          if (tmpItemsFinished.length > 0) {
+            this.libraryItemsFinished = tmpItemsFinished
+          }
+        }
       }
     })
     avPlayer.on('seekDone', (seekDoneTime: number) => {
@@ -810,8 +828,21 @@ export default struct Detail {
                 message: '标记为已听完',
                 duration: 500
               });
-              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+              if (tmpItemsInProgress.length > 0) {
+                this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
+                  const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+                  const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+                  if (progressA && progressB) {
+                    return progressB.lastUpdate - progressA.lastUpdate;
+                  }
+                  return 0;
+                });
+              }
+              let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              if (tmpItemsFinished.length > 0) {
+                this.libraryItemsFinished = tmpItemsFinished
+              }
             })
           Text("放弃进度")
             .width('100%')
@@ -849,8 +880,21 @@ export default struct Detail {
                 message: '放弃进度',
                 duration: 500
               });
-              this.libraryItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-              this.libraryItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+              if (tmpItemsInProgress.length > 0) {
+                this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
+                  const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+                  const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+                  if (progressA && progressB) {
+                    return progressB.lastUpdate - progressA.lastUpdate;
+                  }
+                  return 0;
+                });
+              }
+              let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+              if (tmpItemsFinished.length > 0) {
+                this.libraryItemsFinished = tmpItemsFinished
+              }
             })
         }
         .width('80%')

@@ -39,6 +39,24 @@ function createApi() {
   return api
 }
 
+export async function pingServer(server: string): Promise<boolean> {
+  try {
+    const response: AxiosResponse = await axios.get<string, AxiosResponse<string>>('/ping', {
+      baseURL: server,
+      timeout: 10000
+    })
+    let serverStatus: boolean = response.data.success
+    console.log("服务器连通性", serverStatus);
+    if (serverStatus === true) {
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error(JSON.stringify(error));
+    return false
+  }
+}
+
 export async function getLogin(loginInfo: LoginInfo): Promise<string[] | null> {
   let user: User = {
     username: loginInfo.username,
@@ -146,10 +164,10 @@ export async function getLibrarieItemsInProgress(libraryId: string): Promise<Lib
     return libraryItems
   } catch (error) {
     console.error(JSON.stringify(error));
-    promptAction.showToast({
-      message: '获取进行中项目失败，请检查网络！',
-      duration: 500
-    });
+    // promptAction.showToast({
+    //   message: '获取进行中项目失败，请检查网络！',
+    //   duration: 500
+    // });
     return []
   }
 }
@@ -174,10 +192,10 @@ export async function getLibrarieItemsFinished(libraryId: string): Promise<Libra
     return libraryItems
   } catch (error) {
     console.error(JSON.stringify(error));
-    promptAction.showToast({
-      message: '获取已完成项目失败，请检查网络！',
-      duration: 500
-    });
+    // promptAction.showToast({
+    //   message: '获取已完成项目失败，请检查网络！',
+    //   duration: 500
+    // });
     return []
   }
 }
@@ -344,7 +362,7 @@ export async function updateProgress(itemId: string, progress: UpdateProgress) {
   }
   try {
     const response: rcp.Response = await session.fetch(req)
-    console.log("上传进度成功", response);
+    console.log("上传进度", response);
   } catch (error) {
     console.error(JSON.stringify(error));
     // promptAction.showToast({
@@ -400,7 +418,7 @@ export async function syncSession(sessionId: string, updateSession: UpdateSessio
   try {
     const response: AxiosResponse =
       await api.post<string, AxiosResponse<string>, UpdateSession>(`api/session/${sessionId}/sync`, updateSession)
-    console.log("同步会话成功", response.data);
+    console.log("同步会话", response.data);
   } catch (error) {
     console.error(JSON.stringify(error));
     // promptAction.showToast({
