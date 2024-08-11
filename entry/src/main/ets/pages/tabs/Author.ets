@@ -42,7 +42,8 @@ export default struct author {
         ForEach(this.authors, (item: Author, index) => {
           GridItem() {
             Stack({ alignContent: Alignment.Bottom }) {
-              Image(this.server + `/api/authors/${item.id}/image?format=jpeg&width=1024` + `&token=${this.apitoken}`)
+              Image(item.imagePath === null ? "" :
+                this.server + `/api/authors/${item.id}/image?format=jpeg` + `&token=${this.apitoken}`)
                 .alt($rawfile('noprofile.jpg'))
                 .width('100%')
                 .aspectRatio(3 / 4)
