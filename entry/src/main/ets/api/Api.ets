@@ -39,24 +39,6 @@ function createApi() {
   return api
 }
 
-export async function pingServer(server: string): Promise<boolean> {
-  try {
-    const response: AxiosResponse = await axios.get<string, AxiosResponse<string>>('/ping', {
-      baseURL: server,
-      timeout: 10000
-    })
-    let serverStatus: boolean = response.data.success
-    console.log("服务器连通性", serverStatus);
-    if (serverStatus === true) {
-      return true
-    }
-    return false
-  } catch (error) {
-    console.error(JSON.stringify(error));
-    return false
-  }
-}
-
 export async function getLogin(loginInfo: LoginInfo): Promise<string[] | null> {
   let user: User = {
     username: loginInfo.username,
