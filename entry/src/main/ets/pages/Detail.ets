@@ -26,6 +26,7 @@ import {
   getCover
 } from '../api/Api'
 import { getPixelMap } from '../util/fs'
+import { audio } from '@kit.AudioKit';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
@@ -361,6 +362,34 @@ export default struct Detail {
         default:
           console.info('播放器状态未知。');
           break;
+      }
+    })
+    avPlayer.on('audioInterrupt', async (interruptEvent: audio.InterruptEvent) => {
+      if (interruptEvent.forceType === audio.InterruptForceType.INTERRUPT_FORCE) {
+        switch (interruptEvent.hintType) {
+          case audio.InterruptHint.INTERRUPT_HINT_PAUSE:
+            this.isPlayingTransfer = false
+            this.avPlayer!.pause()
+            this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
+            break;
+          case audio.InterruptHint.INTERRUPT_HINT_STOP:
+            this.isPlayingTransfer = false
+            this.avPlayer!.pause()
+            this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
+            break;
+          default:
+            break;
+        }
+      } else if (interruptEvent.forceType === audio.InterruptForceType.INTERRUPT_SHARE) {
+        switch (interruptEvent.hintType) {
+          case audio.InterruptHint.INTERRUPT_HINT_RESUME:
+            this.isPlayingTransfer = true
+            this.avPlayer!.play()
+            this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime)
+            break;
+          default:
+            break;
+        }
       }
     })
   }
