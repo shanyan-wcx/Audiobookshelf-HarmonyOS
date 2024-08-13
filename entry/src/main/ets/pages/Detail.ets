@@ -5,6 +5,8 @@ import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
 import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
+import { audio } from '@kit.AudioKit';
+import { getPixelMap } from '../util/fs'
 import {
   LibraryItem,
   Chapter,
@@ -25,8 +27,6 @@ import {
   getLibrarieItemsInProgress,
   getCover
 } from '../api/Api'
-import { getPixelMap } from '../util/fs'
-import { audio } from '@kit.AudioKit';
 
 let context = getContext(this) as common.UIAbilityContext;
 let filesDir = context.filesDir;
