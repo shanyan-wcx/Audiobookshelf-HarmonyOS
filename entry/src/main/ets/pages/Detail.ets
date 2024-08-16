@@ -25,7 +25,8 @@ import {
   closeSession,
   getLibrarieItemsFinished,
   getLibrarieItemsInProgress,
-  getCover
+  getCover,
+  getProgress
 } from '../api/Api'
 
 let context = getContext(this) as common.UIAbilityContext;
@@ -57,6 +58,7 @@ export default struct Detail {
   @Consume nowPlayingItem: LibraryItem
   @Consume nowPlayingChapters: Chapter[]
   @Consume showProgressTransfer: boolean
+  @Consume libraryItems: LibraryItem[]
   @Consume avPlayer: media.AVPlayer | null
   @Consume playTitle: string
   @Consume server: string
@@ -279,21 +281,6 @@ export default struct Detail {
         this.itemDuration = this.getDuration(this.itemTransfer.id)
         this.syncTime = new Date().getTime() / 1000
         this.elapsedTime = 0
-        let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
-        if (tmpItemsInProgress.length > 0) {
-          this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
-            const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
-            const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
-            if (progressA && progressB) {
-              return progressB.lastUpdate - progressA.lastUpdate;
-            }
-            return 0;
-          });
-        }
-        let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
-        if (tmpItemsFinished.length > 0) {
-          this.libraryItemsFinished = tmpItemsFinished
-        }
       }
     })
     avPlayer.on('seekDone', (seekDoneTime: number) => {
@@ -338,10 +325,25 @@ export default struct Detail {
           break;
         case 'completed':
           console.info('播放完毕。');
-          await avPlayer.reset();
-          if (this.nowPlayingIndex + 1 > this.nowPlayingTracks.length - 1) {
+          if (this.nowPlayingIndex === this.nowPlayingTracks.length - 1) {
+            let upProgress: UpdateProgress = {
+              duration: this.itemTransfer.media.duration,
+              currentTime: this.itemTransfer.media.duration,
+              progress: 1,
+              isFinished: true
+            }
+            await updateProgress(this.itemTransfer.id, upProgress)
+            for (let element of this.allProgress) {
+              if (element.libraryItemId === this.itemTransfer.id) {
+                element.currentTime = element.duration
+                element.progress = 1
+                element.isFinished = true
+                break
+              }
+            }
             avPlayer.stop()
           } else {
+            await avPlayer.reset();
             this.nowPlayingIndex++
             this.playTitle = this.nowPlayingChapters[this.nowPlayingIndex].title
             avPlayer.url =
@@ -354,6 +356,27 @@ export default struct Detail {
         case 'stopped':
           console.info('播放器停止。');
           this.sleepTime = 0
+          this.isPlayingTransfer = false
+          this.allProgress = []
+          await Promise.all(this.libraryItems.map(async (element) => {
+            let progress = await getProgress(element.id)
+            this.allProgress.push(progress)
+          }));
+          let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+          if (tmpItemsInProgress.length > 0) {
+            this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
+              const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+              const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+              if (progressA && progressB) {
+                return progressB.lastUpdate - progressA.lastUpdate;
+              }
+              return 0;
+            });
+          }
+          let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+          if (tmpItemsFinished.length > 0) {
+            this.libraryItemsFinished = tmpItemsFinished
+          }
           await avPlayer.reset();
           break;
         case 'released':
@@ -541,6 +564,12 @@ export default struct Detail {
               .height(40)
               .layoutWeight(1)
               .onClick(async () => {
+                animateTo({
+                  duration: 300,
+                  curve: Curve.EaseOut,
+                }, () => {
+                  this.sidebarShow = false
+                })
                 if (this.startPlayingTransfer === true) {
                   let currentTime: number = 0
                   for (let element of this.allProgress) {
@@ -589,12 +618,48 @@ export default struct Detail {
                 this.avPlayer!.url = url
                 this.startPlayingTransfer = true
                 this.syncTime = new Date().getTime() / 1000
-                animateTo({
-                  duration: 300,
-                  curve: Curve.EaseOut,
-                }, () => {
-                  this.sidebarShow = false
-                })
+                let upProgress: UpdateProgress = {
+                  duration: 0,
+                  currentTime: 0,
+                  progress: 0,
+                  isFinished: false
+                }
+                for (let element of this.allProgress) {
+                  if (element.libraryItemId === this.nowPlayingItem.id) {
+                    element.duration = this.nowPlayingItem.media.duration
+                    element.currentTime = this.nowTrackStartTime + this.nowPlayedTime
+                    element.progress = Math.round(element.currentTime / element.duration * 100) / 100
+                    element.isFinished = element.progress === 1 ? true : false
+                    upProgress.duration = element.duration
+                    upProgress.currentTime = element.currentTime
+                    upProgress.progress = element.progress
+                    upProgress.isFinished = element.isFinished
+                    break
+                  }
+                }
+                console.log("当前时间", upProgress.currentTime)
+                console.log("当前进度", upProgress.progress)
+                await updateProgress(this.nowPlayingItem.id, upProgress)
+                this.allProgress = []
+                await Promise.all(this.libraryItems.map(async (element) => {
+                  let progress = await getProgress(element.id)
+                  this.allProgress.push(progress)
+                }));
+                let tmpItemsInProgress = await getLibrarieItemsInProgress(this.selectedLibraryId)
+                if (tmpItemsInProgress.length > 0) {
+                  this.libraryItemsInProgress = tmpItemsInProgress.sort((a, b) => {
+                    const progressA = this.allProgress.find(p => p.libraryItemId === a.id);
+                    const progressB = this.allProgress.find(p => p.libraryItemId === b.id);
+                    if (progressA && progressB) {
+                      return progressB.lastUpdate - progressA.lastUpdate;
+                    }
+                    return 0;
+                  });
+                }
+                let tmpItemsFinished = await getLibrarieItemsFinished(this.selectedLibraryId)
+                if (tmpItemsFinished.length > 0) {
+                  this.libraryItemsFinished = tmpItemsFinished
+                }
               })
 
               Button({ type: ButtonType.Normal }) {
