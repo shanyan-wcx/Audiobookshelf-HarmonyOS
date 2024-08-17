@@ -91,6 +91,7 @@ export default struct Detail {
   @Consume sleepTime: number
   @Consume bookmarks: Bookmark[]
   @Consume nowPlayingBookmarks: Bookmark[]
+  @Consume jumpTime: number
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -99,7 +100,8 @@ export default struct Detail {
       mediaImage: getPixelMap(await getCover(this.nowPlayingItem.id)),
       duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
       artist: this.nowPlayingItem.media.metadata.authorName,
-      skipIntervals: 10
+      skipIntervals: this.jumpTime === 10 ? AVSessionManager.SkipIntervals.SECONDS_10 :
+      AVSessionManager.SkipIntervals.SECONDS_30,
     };
     this.session!.setAVMetadata(metadata).then(() => {
       console.info(`SetAVMetadata successfully`);
@@ -183,11 +185,30 @@ export default struct Detail {
       this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, time / 1000) :
       this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, time / 1000)
     });
-    this.session!.on('setSpeed', (time) => {
-      console.log('触发setSpeed行为。')
+    this.session!.on('fastForward', async (time?: number) => {
+      if (this.nowPlayedTime + this.jumpTime > this.nowPlayingDuration) {
+        this.nowPlayedTime = this.nowPlayingDuration
+      } else {
+        this.nowPlayedTime += this.jumpTime
+      }
+      this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+      this.avPlayer!.seek(this.nowPlayedTime * 1000)
+      this.isPlayingTransfer === true ?
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
     });
-    this.session!.off('setLoopMode');
-    this.session!.off('toggleFavorite');
+    this.session!.on('rewind', async (time?: number) => {
+      if (this.nowPlayedTime - this.jumpTime < 0) {
+        this.nowPlayedTime = 0
+      } else {
+        this.nowPlayedTime -= this.jumpTime
+      }
+      this.nowPlayedProgress = this.nowPlayedTime / this.nowPlayingDuration * 100
+      this.avPlayer!.seek(this.nowPlayedTime * 1000)
+      this.isPlayingTransfer === true ?
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PLAY, this.nowPlayedTime) :
+      this.setPlaybackState(AVSessionManager.PlaybackState.PLAYBACK_STATE_PAUSE, this.nowPlayedTime)
+    });
   }
 
   async startContinuousTask() {

@@ -6,7 +6,7 @@ import { avSession as AVSessionManager } from '@kit.AVSessionKit';
 import { bundleManager } from '@kit.AbilityKit';
 import { BusinessError, deviceInfo } from '@kit.BasicServicesKit';
 import { backgroundTaskManager } from '@kit.BackgroundTasksKit';
-import { readConfig, writeConfig } from '../util/fs'
+import { getPixelMap, readConfig, writeConfig } from '../util/fs'
 import {
   getLogout,
   getLibraries,
@@ -18,7 +18,8 @@ import {
   getSeries,
   closeSession,
   getStats,
-  getBookmarks
+  getBookmarks,
+  getCover
 } from '../api/Api'
 import {
   Library,
@@ -196,6 +197,24 @@ export default struct main {
     let config = readConfig()
     config.jumpTime = this.jumpTime
     writeConfig(config)
+    this.setSessionInfo()
+  }
+
+  async setSessionInfo() {
+    let metadata: AVSessionManager.AVMetadata = {
+      assetId: '0',
+      title: this.nowPlayingChapters[this.nowPlayingIndex].title,
+      mediaImage: getPixelMap(await getCover(this.nowPlayingItem.id)),
+      duration: this.nowPlayingTracks[this.nowPlayingIndex].duration * 1000,
+      artist: this.nowPlayingItem.media.metadata.authorName,
+      skipIntervals: this.jumpTime === 10 ? AVSessionManager.SkipIntervals.SECONDS_10 :
+      AVSessionManager.SkipIntervals.SECONDS_30,
+    };
+    this.session!.setAVMetadata(metadata).then(() => {
+      console.info(`SetAVMetadata successfully`);
+    }).catch((err: BusinessError) => {
+      console.error(`Failed to set AVMetadata. Code: ${err.code}, message: ${err.message}`);
+    });
   }
 
   async setPlaybackState(state: number, time: number) {
