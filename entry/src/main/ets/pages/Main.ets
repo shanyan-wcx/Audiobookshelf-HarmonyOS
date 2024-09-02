@@ -109,6 +109,7 @@ export default struct main {
   @Provide mainWindow: window.Window | null = null
   @Provide prepared: boolean = false
   @Provide searchTransfer: LibraryItem[] = []
+  @Provide serverStatus: boolean = true
   @State searchValue: string = ''
   @State currentItem: LibraryItem = {
     id: '',
@@ -281,7 +282,8 @@ export default struct main {
                 return 0;
               });
               this.series = await getSeries(this.selectedLibraryId)
-              this.authors = (await getAuthors(this.selectedLibraryId)).sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+              this.authors =
+                (await getAuthors(this.selectedLibraryId)).sort((a, b) => a.name.localeCompare(b.name, 'zh'))
               this.showProgressTransfer = false
             }
           })
@@ -543,6 +545,15 @@ export default struct main {
       return true
     } else {
       return false
+    }
+  }
+
+  onPageShow() {
+    if (this.serverStatus === false) {
+      promptAction.showToast({
+        message: '连接服务器失败，请检查网络！',
+        duration: 500
+      });
     }
   }
 
@@ -876,7 +887,8 @@ export default struct main {
               })
 
             Row() {
-              Image(this.server + `/api/items/${this.nowPlayingItem.id}/cover?format=jpeg&width=1024` + `&token=${this.apitoken}`)
+              Image(this.server + `/api/items/${this.nowPlayingItem.id}/cover?format=jpeg&width=1024` +
+                `&token=${this.apitoken}`)
                 .alt($rawfile('nocover.jpg'))
                 .width(60)
                 .aspectRatio(1)

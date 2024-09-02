@@ -146,10 +146,10 @@ export async function getLibrarieItemsInProgress(libraryId: string): Promise<Lib
     return libraryItems
   } catch (error) {
     console.error(JSON.stringify(error));
-    // promptAction.showToast({
-    //   message: '获取进行中项目失败，请检查网络！',
-    //   duration: 500
-    // });
+    promptAction.showToast({
+      message: '获取进行中项目失败，请检查网络！',
+      duration: 500
+    });
     return []
   }
 }
@@ -174,10 +174,10 @@ export async function getLibrarieItemsFinished(libraryId: string): Promise<Libra
     return libraryItems
   } catch (error) {
     console.error(JSON.stringify(error));
-    // promptAction.showToast({
-    //   message: '获取已完成项目失败，请检查网络！',
-    //   duration: 500
-    // });
+    promptAction.showToast({
+      message: '获取已完成项目失败，请检查网络！',
+      duration: 500
+    });
     return []
   }
 }
@@ -342,15 +342,21 @@ export async function updateProgress(itemId: string, progress: UpdateProgress) {
     'Authorization': `Bearer ${authToken}`,
     'Content-Type': 'application/json'
   }
+  const timeout: rcp.Timeout = {
+    inactivityMs: 500,
+  };
+  req.configuration = {
+    transfer: {
+      timeout: timeout,
+    }
+  };
   try {
     const response: rcp.Response = await session.fetch(req)
     console.log("上传进度", response);
+    return true
   } catch (error) {
     console.error(JSON.stringify(error));
-    // promptAction.showToast({
-    //   message: '上传进度失败，请检查网络！',
-    //   duration: 500
-    // });
+    return false
   }
 }
 
@@ -399,14 +405,12 @@ export async function syncSession(sessionId: string, updateSession: UpdateSessio
   const api: Axios = createApi()
   try {
     const response: AxiosResponse =
-      await api.post<string, AxiosResponse<string>, UpdateSession>(`api/session/${sessionId}/sync`, updateSession)
+      await api.post<string, AxiosResponse<string>, UpdateSession>(`api/session/${sessionId}/sync`, updateSession, {
+        timeout: 500
+      })
     console.log("同步会话", response.data);
   } catch (error) {
     console.error(JSON.stringify(error));
-    // promptAction.showToast({
-    //   message: '同步会话失败，请检查网络！',
-    //   duration: 500
-    // });
   }
 }
 
@@ -460,10 +464,10 @@ export async function getBookmarks(userId: string): Promise<Bookmark[]> {
     return bookmarks
   } catch (error) {
     console.error(JSON.stringify(error));
-    // promptAction.showToast({
-    //   message: '获取书签失败，请检查网络！',
-    //   duration: 500
-    // });
+    promptAction.showToast({
+      message: '获取书签失败，请检查网络！',
+      duration: 500
+    });
     return []
   }
 }

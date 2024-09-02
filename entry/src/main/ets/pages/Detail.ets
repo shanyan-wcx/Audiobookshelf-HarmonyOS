@@ -92,6 +92,7 @@ export default struct Detail {
   @Consume bookmarks: Bookmark[]
   @Consume nowPlayingBookmarks: Bookmark[]
   @Consume jumpTime: number
+  @Consume serverStatus: boolean
 
   async setSessionInfo() {
     let metadata: AVSessionManager.AVMetadata = {
@@ -294,7 +295,7 @@ export default struct Detail {
         }
         console.log("当前时间", upProgress.currentTime)
         console.log("当前进度", upProgress.progress)
-        await updateProgress(this.nowPlayingItem.id, upProgress)
+        this.serverStatus = await updateProgress(this.nowPlayingItem.id, upProgress)
         console.log("会话当前时间", updateSession.currentTime)
         console.log("会话汇报间隔", updateSession.timeListened)
         await syncSession(this.sessionId, updateSession)
